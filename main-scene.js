@@ -9,7 +9,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         // Locate the camera here (inverted matrix).
         const r = context.width / context.height;
-        context.globals.graphics_state.camera_transform = Mat4.translation([0, 0, -35]);
+        context.globals.graphics_state.camera_transform = Mat4.translation([-70, -25, -200]);
         context.globals.graphics_state.projection_transform = Mat4.perspective(Math.PI / 4, r, .1, 1000);
 
         // At the beginning of our program, load one of each of these shape
@@ -27,7 +27,9 @@ class Assignment_Two_Skeleton extends Scene_Component {
             'box': new Cube(),
             'cylinder': new Cylinder(15),
             'cone': new Cone(20),
-            'ball': new Subdivision_Sphere(4)
+            'ball': new Subdivision_Sphere(4),
+            'torus': new Torus(10, 0.0001, 1000, 0),
+            'UFOBeam': new UFOBeam(4, 10, 300)
         }
         this.submit_shapes(context, shapes);
         this.shape_count = Object.keys(shapes).length;
@@ -36,7 +38,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.clay = context.get_instance(Phong_Shader).material(Color.of(.9, .5, .9, 1), {
             ambient: .4,
             diffusivity: .4
-        });
+        });        
         this.plastic = this.clay.override({
             specularity: .6
         });
@@ -44,6 +46,26 @@ class Assignment_Two_Skeleton extends Scene_Component {
             ambient: 1,
             diffusivity: 0.4,
             specularity: 0.3
+        });
+
+        this.glass = context.get_instance(Phong_Shader).material(Color.of(.9, .9, .9, 1.0), {
+            ambient: 0.5,
+            diffusivity: 1.0
+        });
+
+        this.ufo_bottom = context.get_instance(Phong_Shader).material(Color.of(203/255, 114/255, 246/255, 1.0), {
+            ambient: .4,
+            diffusivity: .4
+        });
+
+        this.beam = context.get_instance(Phong_Shader).material(Color.of(20/255, 190/255, 190/255, 0.2), {
+            ambient: 1.0,
+            diffusivity: .4
+        });
+
+        this.green = context.get_instance(Phong_Shader).material(Color.of(20/255, 255/255, 20/255, 1.0), {
+            ambient: 1.0,
+            diffusivity: .4
         });
 
         // Load some textures for the demo shapes
@@ -68,13 +90,57 @@ class Assignment_Two_Skeleton extends Scene_Component {
                 texture: context.get_instance(shape_textures[t])
             });
         
-        this.lights = [new Light(Vec.of(10, 10, 20, 1), Color.of(1, .4, 1, 1), 100000)];
+        this.lights = [new Light(Vec.of(180, 180, 90, 1), Color.of(1, .4, 1, 1), 100000)];
 
         this.t = 0;
 
         
     }
 
+    draw_ufo(graphics_state, m, t) {
+
+        // Draw the base
+        this.shapes["torus"].draw(
+            graphics_state,
+            m.times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
+              times(Mat4.scale(Vec.of(1, 1, 0.3))),
+            this.clay);
+
+        // Draw the top
+        this.shapes["ball"].draw(
+           graphics_state,
+           m.times(Mat4.scale(Vec.of(5.5, 4, 5.5))).
+             times(Mat4.translation(Vec.of(0, 0.15, 0))),
+           this.glass);
+        
+        for (let multiplier = 0; multiplier < 7; multiplier++) {
+            this.shapes["ball"].draw(
+                graphics_state,
+                m.times(Mat4.rotation(multiplier*(2*Math.PI/7), Vec.of(0, 1, 0))).
+                  times(Mat4.scale(Vec.of(1.2, 1, 1.2))).
+                  times(Mat4.translation(Vec.of(0, 0.8, 6.0))),
+                this.green);
+        }
+
+        // Draws the bottom
+        this.shapes["ball"].draw(
+           graphics_state,
+           m.times(Mat4.scale(Vec.of(5.5, 4, 5.5))).
+             times(Mat4.translation(Vec.of(0, 0.12, 0))),
+           this.ufo_bottom);
+        
+        // Drawing the beam
+        // Makes the beam extend and retract from the UFO
+        // Size goes from 0.2 to 3.0
+        let beam_size = 1.4*Math.sin(0.5*t) + 1.6;
+
+        this.shapes["UFOBeam"].draw(
+            graphics_state,
+            m.times(Mat4.scale(Vec.of(beam_size, beam_size, beam_size)))
+             .times(Mat4.translation(Vec.of(0, -5, 0)))
+             .times(Mat4.rotation(-Math.PI/2, Vec.of(1, 0, 0))),
+            this.beam);
+    }
 
     // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
     make_control_panel() {
@@ -86,7 +152,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
     display(graphics_state) {
         // Use the lights stored in this.lights.
-        //graphics_state.lights = this.lights;
+        graphics_state.lights = this.lights;
                 
         // Find how much time has passed in seconds, and use that to place shapes.
         if (!this.paused)
@@ -104,6 +170,10 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     m.times(Mat4.translation(Vec.of(0,1,0))).
                     times(Mat4.scale(Vec.of(1,1,2))),
                     this.shape_materials["ball"] || this.plastic);
+      
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(50, 30, 100)));
+        this.draw_ufo(graphics_state, m, t);
    }
 
    draw_skybox(graphics_state)
@@ -169,7 +239,6 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     times(Mat4.translation(Vec.of(size-grass_length,30, -2*size+ grass_length))).
                     times(Mat4.scale(Vec.of(200,200, 1))),
                     this.shape_materials["square_BK"] || this.plastic);
-         
         //sky_front
         this.shapes["square"].draw(
                     graphics_state,

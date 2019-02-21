@@ -233,3 +233,245 @@ window.Subdivision_Sphere = window.classes.Subdivision_Sphere = class Subdivisio
         this.subdivideTriangle(ab, bc, ac, count - 1);
     }
 }
+
+//
+window.Torus = window.classes.Torus = class Torus extends Shape {
+    constructor(outerRadius, innerRadius, slices, stacks) {
+        super("positions", "normals", "texture_coords");
+
+        outerRadius = outerRadius || 0.5;
+        innerRadius = innerRadius || outerRadius/3;
+        slices = slices || 32;
+        stacks = stacks || 16;
+        var vertexCount = (slices+1)*(stacks+1);
+        var vertices = new Float32Array( 3*vertexCount );
+        var normals = new Float32Array( 3* vertexCount );
+        var texCoords = new Float32Array( 2*vertexCount );
+        var indices = new Uint16Array( 2*slices*stacks*3 );
+        var du = 2*Math.PI/slices;
+        var dv = 2*Math.PI/stacks;
+        var centerRadius = (innerRadius+outerRadius)/2;
+        var tubeRadius = outerRadius - centerRadius;
+        var i,j,u,v,cx,cy,sin,cos,x,y,z;
+        var indexV = 0;
+        var indexT = 0;
+        for (j = 0; j <= stacks; j++) {
+          v = -Math.PI + j*dv;
+          cos = Math.cos(v);
+          sin = Math.sin(v);
+          for (i = 0; i <= slices; i++) {
+             u = i*du;
+             cx = Math.cos(u);
+             cy = Math.sin(u);
+             x = cx*(centerRadius + tubeRadius*cos);
+             y = cy*(centerRadius + tubeRadius*cos);
+             z = sin*tubeRadius;
+             vertices[indexV] = x;
+             normals[indexV++] = cx*cos;
+             vertices[indexV] = y
+             normals[indexV++] = cy*cos;
+             vertices[indexV] = z
+             normals[indexV++] = sin;
+             texCoords[indexT++] = i/slices;
+             texCoords[indexT++] = j/stacks;
+          } 
+        }
+        var k = 0;
+        for (j = 0; j < stacks; j++) {
+          var row1 = j*(slices+1);
+          var row2 = (j+1)*(slices+1);
+          for (i = 0; i < slices; i++) {
+              indices[k++] = row1 + i;
+              indices[k++] = row2 + i + 1;
+              indices[k++] = row2 + i;
+              indices[k++] = row1 + i;
+              indices[k++] = row1 + i + 1;
+              indices[k++] = row2 + i + 1;
+          }
+        }
+
+        this.positions = [];
+        k = 0;
+        for (let i = 0; i < vertices.length/3; i++) {
+            var triple = []
+            for (let j = 0; j < 3; j++) {
+                triple.push(vertices[k]);
+                k++;
+            }
+            this.positions.push(triple);
+        }
+
+        this.normals = [];
+        k = 0;
+        for (let i = 0; i < normals.length/3; i++) {
+            var triple = [];
+            for (let j = 0; j < 3; j++) {
+                triple.push(normals[k]);
+                k++;
+            }
+            this.normals.push(triple);
+        }
+
+        this.texture_coords = [];
+        k = 0;
+        for (let i = 0; i < texCoords.length/2; i++) {
+            var double = [];
+            for (let j = 0; j < 2; j++) {
+                double.push(texCoords[k]);
+                k++;
+            }
+            this.texture_coords.push(double);
+        }
+        
+        this.indices = [];
+        for (let i = 0; i < indices.length; i++) {
+            this.indices.push(indices[i])
+        }
+    }
+}
+
+window.UFOBeam = window.classes.UFOBeam = class UFOBeam extends Shape {
+    constructor(radius, height, slices) {
+        super("positions", "normals", "texture_coords");
+        var noBottom = true;
+        
+        radius = radius || 0.5;
+        height = height || 2*radius;
+        slices = slices || 32;
+        var fractions = [ 0, 0.5, 0.75, 0.875, 0.9375 ];
+        var vertexCount = fractions.length*(slices+1) + slices;
+        if (!noBottom)
+          vertexCount += slices + 2;
+        var triangleCount = (fractions.length-1)*slices*2 + slices;
+        if (!noBottom)
+          triangleCount += slices;
+        var vertices = new Float32Array(vertexCount*3);
+        var normals = new Float32Array(vertexCount*3);
+        var texCoords = new Float32Array(vertexCount*2);
+        var indices = new Uint16Array(triangleCount*3);
+        var normallength = Math.sqrt(height*height+radius*radius);
+        var n1 = height/normallength;
+        var n2 = radius/normallength; 
+        var du = 2*Math.PI / slices;
+        var kv = 0;
+        var kt = 0;
+        var k = 0;
+        var i,j,u;
+        for (j = 0; j < fractions.length; j++) {
+          var uoffset = (j % 2 == 0? 0 : 0.5);
+          for (i = 0; i <= slices; i++) {
+             var h1 = -height/2 + fractions[j]*height;
+             u = (i+uoffset)*du;
+             var c = Math.cos(u);
+             var s = Math.sin(u);
+             vertices[kv] = c*radius*(1-fractions[j]);
+             normals[kv++] = c*n1;
+             vertices[kv] = s*radius*(1-fractions[j]);
+             normals[kv++] = s*n1;
+             vertices[kv] = h1;
+             normals[kv++] = n2;
+             texCoords[kt++] = (i+uoffset)/slices;
+             texCoords[kt++] = fractions[j];
+          }
+        }
+        var k = 0;
+        for (j = 0; j < fractions.length-1; j++) {
+          var row1 = j*(slices+1);
+          var row2 = (j+1)*(slices+1);
+          for (i = 0; i < slices; i++) {
+              indices[k++] = row1 + i;
+              indices[k++] = row2 + i + 1;
+              indices[k++] = row2 + i;
+              indices[k++] = row1 + i;
+              indices[k++] = row1 + i + 1;
+              indices[k++] = row2 + i + 1;
+          }
+        }
+        var start = kv/3 - (slices+1);
+        for (i = 0; i < slices; i++) { // slices points at top, with different normals, texcoords
+          u = (i+0.5)*du;
+          var c = Math.cos(u);
+          var s = Math.sin(u);
+          vertices[kv] = 0;
+          normals[kv++] = c*n1;
+          vertices[kv] = 0;
+          normals[kv++] = s*n1;
+          vertices[kv] = height/2;
+          normals[kv++] = n2;
+          texCoords[kt++] = (i+0.5)/slices;
+          texCoords[kt++] = 1;
+        }
+        for (i = 0; i < slices; i++) {
+          indices[k++] = start+i;
+          indices[k++] = start+i+1;
+          indices[k++] = start+(slices+1)+i;
+        }
+        if (/*!noBottom*/true) {
+          var startIndex = kv/3;
+          vertices[kv] = 0;
+          normals[kv++] = 0;
+          vertices[kv] = 0;
+          normals[kv++] = 0;
+          vertices[kv] = -height/2;
+          normals[kv++] = -1;
+          texCoords[kt++] = 0.5;
+          texCoords[kt++] = 0.5; 
+          for (i = 0; i <= slices; i++) {
+             u = 2*Math.PI - i*du;
+             var c = Math.cos(u);
+             var s = Math.sin(u);
+             vertices[kv] = c*radius;
+             normals[kv++] = 0;
+             vertices[kv] = s*radius;
+             normals[kv++] = 0;
+             vertices[kv] = -height/2;
+             normals[kv++] = -1;
+             texCoords[kt++] = 0.5 - 0.5*c;
+             texCoords[kt++] = 0.5 + 0.5*s;
+          }
+          for (i = 0; i < slices; i++) {
+             indices[k++] = startIndex;
+             indices[k++] = startIndex + i + 1;
+             indices[k++] = startIndex + i + 2;
+          }
+        }
+
+        this.positions = [];
+        k = 0;
+        for (let i = 0; i < vertices.length/3; i++) {
+            var triple = []
+            for (let j = 0; j < 3; j++) {
+                triple.push(vertices[k]);
+                k++;
+            }
+            this.positions.push(triple);
+        }
+
+        this.normals = [];
+        k = 0;
+        for (let i = 0; i < normals.length/3; i++) {
+            var triple = [];
+            for (let j = 0; j < 3; j++) {
+                triple.push(normals[k]);
+                k++;
+            }
+            this.normals.push(triple);
+        }
+
+        this.texture_coords = [];
+        k = 0;
+        for (let i = 0; i < texCoords.length/2; i++) {
+            var double = [];
+            for (let j = 0; j < 2; j++) {
+                double.push(texCoords[k]);
+                k++;
+            }
+            this.texture_coords.push(double);
+        }
+        
+        this.indices = [];
+        for (let i = 0; i < indices.length; i++) {
+            this.indices.push(indices[i])
+        }        
+    }
+}
