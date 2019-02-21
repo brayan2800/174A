@@ -50,8 +50,11 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.shape_materials = {};
         const shape_textures = {
             square: "assets/grass.png",
-            square_sky: "assets/sky_up.jpg",
-            square_LF: "assets/sky_LF.jpg",
+            square_sky: "assets/hills_up.png",
+            square_LF: "assets/hills_lf.png",
+            square_RT: "assets/hills_rt.png",
+            square_BK: "assets/hills_bk.png",
+            square_FR: "assets/hills_ft.png",
             box: "assets/even-dice-cubemap.png",
             ball: "assets/cow2.png",
             cylinder: "assets/treebark.png",
@@ -110,8 +113,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         const n_grass = 10;
 
         
-        m = m.
-            times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
+        m = m.times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
             times(Mat4.scale(Vec.of(grass_length, grass_length,1)));
     
         //floor plane 
@@ -122,32 +124,58 @@ class Assignment_Two_Skeleton extends Scene_Component {
             {
                 this.shapes["square"].draw(
                     graphics_state,
-                    m_column = m_column.
-                        times(Mat4.translation(Vec.of(0,2,0))),
+                    m_column,
                     this.shape_materials["square"] || this.plastic);
+
+                m_column = m_column.times(Mat4.translation(Vec.of(0,-2,0)))
             }
             
             m = m.times(Mat4.translation(Vec.of(2,0,0)));
         }
         
-        //sky 
+        //sky_up
         m = Mat4.identity();
         this.shapes["square"].draw(
                     graphics_state,
-                    m.times(Mat4.translation(Vec.of(90,199,110))).
+                    m.times(Mat4.translation(Vec.of(90,150,-90))).
                     times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
+                    times(Mat4.rotation(Math.PI/2, Vec.of(0, 0, 1))).
                     times(Mat4.scale(Vec.of(100,100, 1))),
                     this.shape_materials["square_sky"] || this.plastic);
-
-        m = Mat4.identity();
+        //sky_Left
         this.shapes["square"].draw(
                     graphics_state,
-                    m.times(Mat4.translation(Vec.of(-10,100,110))).
+                    m.times(Mat4.translation(Vec.of(-10, 50,-90))).
                     times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).
                     times(Mat4.scale(Vec.of(100,100, 1))),
                     this.shape_materials["square_LF"] || this.plastic);
+        
+        //sky_right
+        this.shapes["square"].draw(
+                    graphics_state,
+                    m.times(Mat4.translation(Vec.of(190,50,-90))).
+                    times(Mat4.rotation(Math.PI*3/2, Vec.of(0, 1, 0))).
+                    times(Mat4.scale(Vec.of(100,100, 1))),
+                    this.shape_materials["square_RT"] || this.plastic);
 
+        //sky_back
+        this.shapes["square"].draw(
+                    graphics_state,
+                    m.
+                    times(Mat4.translation(Vec.of(90,50,-190))).
+                    //times(Mat4.rotation(Math.PI, Vec.of(0, 1, 0))).
+                    times(Mat4.scale(Vec.of(100,100, 1))),
+                    this.shape_materials["square_BK"] || this.plastic);
          
+        //sky_front
+        this.shapes["square"].draw(
+                    graphics_state,
+                    m.
+                    times(Mat4.translation(Vec.of(90,50,10))).
+                    times(Mat4.rotation(Math.PI, Vec.of(0, 1, 0))).
+                    times(Mat4.scale(Vec.of(100,100, 1))),
+                    this.shape_materials["square_FR"] || this.plastic);
+
 
 //         //draws 40x40 plot of grass
 //         for (var i =0; i<4; i++)
