@@ -2,7 +2,9 @@ class Assignment_Two_Skeleton extends Scene_Component {
     // The scene begins by requesting the camera, shapes, and materials it will need.
     constructor(context, control_box) {
         super(context, control_box);
-
+        
+        const gl = context.gl;
+        
         // First, include a secondary Scene that provides movement controls:
         if(!context.globals.has_controls)
             context.register_scene_component(new Movement_Controls(context, control_box.parentElement.insertCell()));
@@ -90,7 +92,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
                 texture: context.get_instance(shape_textures[t])
             });
         
-        this.lights = [new Light(Vec.of(180, 180, 90, 1), Color.of(1, .4, 1, 1), 100000)];
+        this.lights = [new Light(gl, Mat4.look_at(Vec.of(50, 10, 50), Vec.of(10, 0, 10), Vec.of(0, 1, 0)), Vec.of(240, 60, -220, 1), Color.of(1, .4, 1, 1), 100000)];
 
         this.t = 0;
 
