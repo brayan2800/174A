@@ -598,38 +598,48 @@ class Light {
         this.tex_width = 1024;
         this.tex_height = 1024;
 
+        
         this.shadow_color_buf = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RBGA, tex_width, tex_height,
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
                       0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
+
+        /*
         this.shadow_depth_buf = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_depth_buf);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, tex_width, tex_height,
-                      0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
+                      0, gl.RGBA, gl.UNSIGNED_INT, null);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        */
 
+        this.shadow_render_buffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16,
+                               this.tex_width, this.tex_height);
+        
         this.shadow_frame_buf = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.shadow_color_buf, 0);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadow_depth_buf, 0);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.shadow_render_buffer);
+       
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
     }
 
     renderDepthBuffer(graphics_state, draw_fun) {
         gl = this.gl;
 
-        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
-        gl.bindTexture(gl.TEXTURE_2D, this.shadow_depth_buf);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
 
         // Hold the camera transform to restore later
         let actual_camera_transform = graphics_state.camera_transform;
@@ -642,6 +652,7 @@ class Light {
 
         // Restore the actual camera transform
         graphics_state.camera_transform = actual_camera_transform;
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     }
@@ -650,15 +661,13 @@ class Light {
         gl = this.gl;
         graphics_state.light = this;
 
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.shadow_depth_buf);
+        gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
 
         draw_fun();
 
-        gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
 
         graphics_state.light = undefined;
     }
@@ -667,19 +676,21 @@ class Light {
         gl = this.gl;
         
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
-        gl.deleteTexture(this.shadow_depth_buf);
+        
+        
+        gl.deleteTexture(this.shadow_color_buf);
 
-        this.shadow_depth_buf = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.shadow_depth_buf);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, this.tex_width, this.tex_height,
-                      0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+        this.shadow_color_buf = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
+                      0, gl.RGBA, gl.UNSIGNED_INT, null);
         
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.shadow_depth_buf, 0);
+        
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.shadow_color_buf, 0);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     }

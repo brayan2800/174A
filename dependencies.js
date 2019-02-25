@@ -366,7 +366,7 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 			return {
 				object_space_pos: "positions",
 				normal: "normals",
-				tex_coord, "texture_coords"
+				tex_coord: "texture_coords"
 			}[name];
 		}
 
