@@ -9,7 +9,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         // Locate the camera here (inverted matrix).
         const r = context.width / context.height;
-        context.globals.graphics_state.camera_transform = Mat4.translation([-70, -25, -200]);
+        context.globals.graphics_state.camera_transform = Mat4.translation([-241.06, -25, 82.19]);
         context.globals.graphics_state.projection_transform = Mat4.perspective(Math.PI / 4, r, .1, 1000);
 
         // At the beginning of our program, load one of each of these shape
@@ -172,7 +172,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     this.shape_materials["ball"] || this.plastic);
       
         m = Mat4.identity();
-        m = m.times(Mat4.translation(Vec.of(50, 30, 100)));
+        m = m.times(Mat4.translation(Vec.of(240, 30, -220)));
         this.draw_ufo(graphics_state, m, t);
    }
 
