@@ -324,6 +324,413 @@ window.Phong_Shader = window.classes.Phong_Shader = class Phong_Shader extends S
     }
 }
 
+// Shadow Phong Shader
+// Same as the phong shader but will take the shadow map into account when making the
+// calculations for the fragments
+
+window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
+	class Shadow_Phong_Shader extends Shader {
+		material(color, properties) {
+			return new class Material {
+				constructor(shader, color = Color.of(0, 0, 0, 1), ambient = 0, diffusivity = 1, specularity = 1, smoothness = 40, texture = 0) {
+					Object.assign(this, {
+						shader,
+						color,
+						ambient,
+						diffusivity,
+						specularity,
+						smoothness,
+						texture
+					});  // Assign defaults.
+
+                    Object.assign(this, properties);
+				}
+
+				override(properties) {
+					const copied = new this.constructor();
+
+                	Object.assign(copied, this);
+                	Object.assign(copied, properties);
+                	copied.color = copied.color.copy();
+                	
+                	if (properties["opacity"] != undefined)
+                	    copied.color[3] = properties["opacity"];
+                	
+                	return copied;
+				}
+			}
+			(this, color);
+		}
+
+		map_attribute_name_to_buffer_name(name) {
+			return {
+				object_space_pos: "positions",
+				normal: "normals",
+				tex_coord, "texture_coords"
+			}[name];
+		}
+
+		shared_glsl_code () {
+			return `
+				precision mediump float;
+				const int N_LIGHTS = 1;
+
+				uniform float ambient, diffusivity, specularity, smoothness, animation_time, attenuation_factor;
+				uniform bool GOURAUD, COLOR_NORMALS, USE_TEXTURE;
+				uniform vec4 lightPosition, lightColor, shapeColor;
+
+				varying vec3 N, E;
+				varying vec2 f_tex_coord;
+				varying vec4 VERTEX_COLOR;
+				varying vec3 L, H;
+				varying float dist;
+				varying vec4 positionFromLight;
+
+				vec3 phong_model_lights (vec3 N, bool shadowed) {
+					vec3 result = vec3(0.0);
+
+					float s = 1.0;
+
+					if (shadowed) {
+						s = 0.5;
+					}
+
+					float attenuation_multiplier = 1.0 / (1.0 + attenuation_factor * (dist * dist));
+					float diffuse = max(dot(N, L), 0.0);
+					float specular = pow(max(dot(N, H), 0.0), smoothness);
+
+					result += s * attenuation_multiplier * (shapeColor.xyz * diffusivity * diffuse + lightColor.xyz * specularity * specular);
+
+					return result;
+				}
+			`;
+		}
+
+		vertex_glsl_code() {
+			return `
+		        attribute vec3 object_space_pos, normal;
+		        attribute vec2 tex_coord;
+		        
+		        uniform mat4 camera_transform, camera_model_transform, projection_camera_model_transform, projection_transform, model_transform, light_transform;
+		        uniform mat3 inverse_transpose_modelview;
+		        
+		        void main() {
+		        	gl_Position = projection_camera_model_transform * vec4(object_space_pos, 1.0);     // The vertex's final resting place (in NDCS).
+					N = normalize( inverse_transpose_modelview * normal );                             // The final normal vector in screen space.
+					f_tex_coord = tex_coord;                                         // Directly use original texture coords and interpolate between.
+
+					vec4 world_position = (model_transform * vec4(object_space_pos, 1.0));
+					positionFromLight = projection_transform * light_transform * world_position;
+					
+					if( COLOR_NORMALS )                                     // Bypass all lighting code if we're lighting up vertices some other way.
+					{ 
+						VERTEX_COLOR = vec4( N[0] > 0.0 ? N[0] : sin( animation_time * 3.0   ) * -N[0],             // In "normals" mode, 
+					                         N[1] > 0.0 ? N[1] : sin( animation_time * 15.0  ) * -N[1],             // rgb color = xyz quantity.
+					                         N[2] > 0.0 ? N[2] : sin( animation_time * 45.0  ) * -N[2] , 1.0 );     // Flash if it's negative.
+						return;
+					}
+					
+					// Calculating the varying values for the fragment shader
+					vec3 screen_space_pos = ( camera_model_transform * vec4(object_space_pos, 1.0) ).xyz;
+					E = normalize( -screen_space_pos );
+					// Light positions use homogeneous coords.  Use w = 0 for a directional light source -- a vector instead of a point.
+					L = normalize( ( camera_transform * lightPosition ).xyz - lightPosition.w * screen_space_pos );
+					H = normalize( L + E );
+
+					// Is it a point light source?  Calculate the distance to it from the object.  Otherwise use some arbitrary distance.
+					dist  = lightPosition.w > 0.0 ? distance((camera_transform * lightPosition).xyz, screen_space_pos)
+					                                : distance( attenuation_factor * -lightPosition.xyz, object_space_pos.xyz );
+
+					if( GOURAUD )                   // Gouraud shading mode?  If so, finalize the whole color calculation here in the vertex shader, 
+					{                               // one per vertex, before we even break it down to pixels in the fragment shader.   As opposed 
+					                                // to Smooth "Phong" Shading, where we *do* wait to calculate final color until the next shader.
+					VERTEX_COLOR      = vec4( shapeColor.xyz * ambient, shapeColor.w);
+					VERTEX_COLOR.xyz += phong_model_lights( N, false );
+					}
+		        }
+			`;
+		}
+
+		fragment_glsl_code() {
+			return `
+				uniform sampler2D shadowMap;
+				uniform sampler2D texture;
+
+				void main() {
+					vec3 vertex_relative_to_light = positionFromLight.xyz / positionFromLight.w;
+					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
+					float shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy).r;
+					bool shadowed = vertex_relative_to_light.z > shadowmap_dist + 0.000001;
+
+					if( GOURAUD || COLOR_NORMALS )    // Do smooth "Phong" shading unless options like "Gouraud mode" are wanted instead.
+					{
+						gl_FragColor = VERTEX_COLOR;    // Otherwise, we already have final colors to smear (interpolate) across vertices.            
+						return;
+					}                                 // If we get this far, calculate Smooth "Phong" Shading as opposed to Gouraud Shading.
+					
+					// Phong shading is not to be confused with the Phong Reflection Model.
+					vec4 tex_color = texture2D( texture, f_tex_coord );                    // Sample the texture image in the correct place.
+					float s = 1.0;
+					
+					if (shadowed) {
+						s = 0.5;
+					}
+
+					// Compute an initial (ambient) color:
+					if( USE_TEXTURE ) {
+						gl_FragColor = vec4( s * ( tex_color.xyz + shapeColor.xyz ) * ambient, shapeColor.w * tex_color.w ); 
+					}
+					else {
+						gl_FragColor = vec4( shapeColor.xyz * ambient, shapeColor.w );
+					}
+
+					gl_FragColor.xyz += phong_model_lights( N, shadowed );                   // Compute the final color with contributions from lights.				
+				}
+			`;
+		}
+
+		        // Define how to synchronize our JavaScript's variables to the GPU's:
+        update_GPU(g_state, model_transform, material, gpu = this.g_addrs, gl = this.gl) {                              // First, send the matrices to the GPU, additionally cache-ing some products of them we know we'll need:
+            this.update_matrices(g_state, model_transform, gpu, gl);
+            gl.uniform1f(gpu.animation_time_loc, g_state.animation_time / 1000);
+
+            if (g_state.gouraud === undefined) {
+                g_state.gouraud = g_state.color_normals = false;
+            }    // Keep the flags seen by the shader
+            gl.uniform1i(gpu.GOURAUD_loc, g_state.gouraud || material.gouraud);                // program up-to-date and make sure
+            gl.uniform1i(gpu.COLOR_NORMALS_loc, g_state.color_normals);                              // they are declared.
+
+            gl.uniform4fv(gpu.shapeColor_loc, material.color);    // Send the desired shape-wide material qualities
+            gl.uniform1f(gpu.ambient_loc, material.ambient);    // to the graphics card, where they will tweak the
+            gl.uniform1f(gpu.diffusivity_loc, material.diffusivity);    // Phong lighting formula.
+            gl.uniform1f(gpu.specularity_loc, material.specularity);
+            gl.uniform1f(gpu.smoothness_loc, material.smoothness);
+
+            if (material.texture)                           // NOTE: To signal not to draw a texture, omit the texture parameter from Materials.
+            {
+                gpu.shader_attributes["tex_coord"].enabled = true;
+                gl.uniform1f(gpu.USE_TEXTURE_loc, 1);
+                gl.activeTexture(gl.TEXTURE1)
+                gl.bindTexture(gl.TEXTURE_2D, material.texture.id);
+                gl.activeTexture(gl.TEXTURE0)
+            }
+            else {
+                gl.uniform1f(gpu.USE_TEXTURE_loc, 0);
+                gpu.shader_attributes["tex_coord"].enabled = false;
+            }
+
+            if (!g_state.light) return;
+            var lightPositions_flattened = [], lightColors_flattened = [], lightAttenuations_flattened = [];
+            for (var i = 0; i < 4; i++) {
+                lightPositions_flattened.push(g_state.light.position[i % 4]);
+                lightColors_flattened.push(g_state.light.color[i % 4]);
+                lightAttenuations_flattened[0] = g_state.light.attenuation;
+            }
+            
+            var lightTransforms_flattened = Mat.flatten_2D_to_1D(g_state.light.transform.transposed())
+            
+
+            gl.uniformMatrix4fv(gpu.light_transform_loc, false, lightTransforms_flattened);
+            gl.uniform4fv(gpu.lightPosition_loc, lightPositions_flattened);
+            gl.uniform4fv(gpu.lightColor_loc, lightColors_flattened);
+            gl.uniform1fv(gpu.attenuation_factor_loc, lightAttenuations_flattened);
+            
+            // Binding the shadow map for the shaders
+            let shadowmap_loc = gl.getUniformLocation(this.program, "shadowmap")
+            gl.uniform1i(shadowmap_loc, 0);
+            let texture_loc = gl.getUniformLocation(this.program, "texture")
+            gl.uniform1i(texture_loc, 1);
+            
+        }
+
+        update_matrices(g_state, model_transform, gpu, gl) {
+            let [P, C, M] = [g_state.projection_transform, g_state.camera_transform, model_transform],
+                CM = C.times(M),
+                PCM = P.times(CM),
+                inv_CM = Mat4.inverse(CM).sub_block([0, 0], [3, 3]);
+
+            gl.uniformMatrix4fv(gpu.model_transform_loc, false, Mat.flatten_2D_to_1D(M.transposed()));
+            gl.uniformMatrix4fv(gpu.projection_transform_loc, false, Mat.flatten_2D_to_1D(P.transposed()));
+            gl.uniformMatrix4fv(gpu.camera_transform_loc, false, Mat.flatten_2D_to_1D(C.transposed()));
+            gl.uniformMatrix4fv(gpu.camera_model_transform_loc, false, Mat.flatten_2D_to_1D(CM.transposed()));
+            gl.uniformMatrix4fv(gpu.projection_camera_model_transform_loc, false, Mat.flatten_2D_to_1D(PCM.transposed()));
+            gl.uniformMatrix3fv(gpu.inverse_transpose_modelview_loc, false, Mat.flatten_2D_to_1D(inv_CM));        	
+        }
+	}
+
+// Currently used to shade the grass tiles
+class Tiling_Shadow_Shader extends Shadow_Phong_Shader {
+	fragment_glsl_code() {
+		return `
+			uniform sampler2D shadowMap;
+			uniform sampler2D texture;
+
+			void main() {
+				vec3 vertex_relative_to_light = positionFromLight.xyz / positionFromLight.w;
+				vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
+
+				float shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy).r;
+				bool shadowed = vertex_relative_to_light.z > shadowmap_dist + 0.000001;
+
+				if (GOURAUD || COLOR_NORMALS) {
+					gl_FragColor = VERTEX_COLOR;
+					return;
+				}
+
+				vec4 tex_color = texture2D(texture, f_tex_coord * 20.0);
+
+				float s = 1.0;
+
+				if (shadowed) {
+					s = 0.5;
+				}
+
+				if (USE_TEXTURE) {
+					gl_FragColor = vec4(s * (tex_color.xyz + shapeColor.xyz) * ambient, shapeColor.w * tex_color.w);
+				}
+
+				else {
+					gl_FragColor = vec4(shapeColor.xyz * ambient, shapeColor.w);
+				}
+
+				gl_FragColor.xyz += phong_model_lights(N, shadowed);
+			}
+		`;
+	}
+}
+
+class Shadow_Shader extends Shader {
+	constructor (gl) {
+		super(gl);
+	}
+
+	material() {
+		return {
+			shader: this
+		};
+	}
+
+	map_attribute_name_to_buffer_name(name) {
+		return {
+			object_space_pos: "positions",
+			color: "colors"
+		}[name];
+	}
+
+	update_GPU(g_state, model_transform, material, gpu = this.g_addrs, gl = this.gl) {
+		let [P,C,M] = [g_state.projection_transform, g_state.camera_transform, model_transform],
+            CM = C.times(M),
+            PCM = P.times(CM);
+
+		gl.uniformMatrix4fv(gpu.model_transform_loc, false, Mat.flatten_2D_to_1D(M.transposed()));
+		gl.uniformMatrix4fv(gpu.camera_transform_loc, false, Mat.flatten_2D_to_1D(C.transposed()));
+		gl.uniformMatrix4fv(gpu.projection_transform_loc, false, Mat.flatten_2D_to_1D(P.transposed()));
+		gl.uniformMatrix4fv(gpu.projection_camera_model_transform_loc, false, Mat.flatten_2D_to_1D(PCM.transposed()));
+
+		var lightTransforms_flattened = []
+		for (var i = 0 ; i < g_state.lights.length; i++) {
+			lightTransforms_flattened = Mat.flatten_2D_to_1D(g_state.lights[i].transform.transposed())
+		}
+
+		var lightColors_flattened = []
+		for (var i = 0; i < 4 * g_state.lights.length; i++) {
+			lightColors_flattened.push(g_state.lights[Math.floor(i / 4)].color[i % 4]);
+		}
+
+		gl.uniformMatrix4fv(gpu.light_transform_loc, false, lightTransforms_flattened);
+		gl.uniform4fv(gpu.light_color_loc, lightColors_flattened);
+	}
+
+	shared_glsl_code() {
+		return `
+			precision mediump float;
+
+			uniform float red;
+			const int N_LIGHTS = 1;
+			uniform vec4 lightPosition[N_LIGHTS], lightColor[N_LIGHTS];
+
+			varying vec4 positionFromLight;
+			varying world_position;
+		`;
+	}
+
+	vertex_glsl_code() {
+		return `
+			attribute vec3 object_space_pos;
+
+			uniform mat4 projection_camera_model_transform;
+			uniform mat4 projection_transform;
+			uniform mat4 model_transform;
+			uniform mat4 camera_transform;
+			uniform mat4 light_transform[N_LIGHTS];
+
+			void main() {
+				gl_Position = projection_camera_model_transform * vec4(object_space_pos, 1.0);
+				world_position = (model_transform * vec4(object_space_pos, 1.0));
+
+				for(int i = 0; i < N_LIGHTS; i++) {
+					positionFromLight = projection_transform * light_transform[i] * world_position;
+				}
+			}
+		`;
+	}
+
+	fragment_glsl_code() {
+		return `
+			uniform sampler2D shadowmap;
+			bool in_shadow (vec4 vert) {
+				vec3 vertex_relative_to_light = vert.xyz / vert.w;
+				vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
+
+				float shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy).r;
+				return vertex_relative_to_light.z > shadowmap_dist + 0.00001;
+			}
+
+			void main() {
+				vec3 vertex_relative_to_light = positionFromLight.xyz / position.w;
+				vertex_relative_to_light = vertex_relative_to_light* 0.5 + 0.5;
+
+				vec4 shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy);
+				gl_FragColor = shadowmap_dist;
+
+				if (in_shadow(positionFromLight)) {
+					gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+				}
+
+				else {
+					gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+				}
+			}
+		`;
+	}
+}
+
+class Texture_Tile extends Phong_Shader {
+	fragment_glsl_code() {
+		return `
+			uniform sampler2D texture;
+
+			void main() {
+				if (GOURAUD || COLOR_NORMALS) {
+					gl_FragColor = VERTEX_COLOR;
+					return;
+				}
+
+				vec4 tex_color = texture2D(texture, f_tex_coord * 16.0);
+
+				if (USE_TEXTURE) {
+					gl_FragColor = vec4((tex_color.xyz + shapeColor.xyz) * ambient, shapeColor.w * tex_color.w);
+				}
+				else {
+					gl_FragColor = vec4(shapeColor.xyz * ambient, shapeColor.w);
+				}
+
+				gl_FragColor.xyz += phong_model_lights(N);
+			}
+		`;
+	}
+}
+
 // Movement_Controls is a Scene_Component that can be attached to a canvas, like any 
 // other Scene, but it is a Secondary Scene Component -- meant to stack alongside other
 // scenes.  Rather than drawing anything it embeds both first-person and third-person
