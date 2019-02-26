@@ -594,11 +594,13 @@ class Light {
         Object.assign(this, {
             gl, transform, position, color, attenuation: 1 / size
         });
-    
+        
+        this.gl = gl;
+
         this.tex_width = 1024;
         this.tex_height = 1024;
 
-        
+        // We need to render from the light POV onto this texture        
         this.shadow_color_buf = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
@@ -607,19 +609,7 @@ class Light {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-
-        /*
-        this.shadow_depth_buf = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, this.shadow_depth_buf);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
-                      0, gl.RGBA, gl.UNSIGNED_INT, null);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        */
-
+        
         this.shadow_render_buffer = gl.createRenderbuffer();
         gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
         gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16,
@@ -635,11 +625,17 @@ class Light {
     }
 
     renderDepthBuffer(graphics_state, draw_fun) {
-        gl = this.gl;
-
+        var gl = this.gl;
+            
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
         gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
+        
+        //
+        gl.viewport(0, 0, this.tex_width, this.tex_height);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        //
 
         // Hold the camera transform to restore later
         let actual_camera_transform = graphics_state.camera_transform;
@@ -652,39 +648,43 @@ class Light {
 
         // Restore the actual camera transform
         graphics_state.camera_transform = actual_camera_transform;
-        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        
+        // Reset the viewport
+        gl.viewport(0, 0, 1080, 600)
 
     }
 
     renderOutputBuffer(graphics_state, draw_fun) {
-        gl = this.gl;
+        var gl = this.gl;
+
         graphics_state.light = this;
 
+        gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
-        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
-
+        
         draw_fun();
-
+        
+        gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        
         graphics_state.light = undefined;
     }
 
     clearDepthBuffer() {
-        gl = this.gl;
+        var gl = this.gl;
         
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
-        
         
         gl.deleteTexture(this.shadow_color_buf);
 
         this.shadow_color_buf = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
-                      0, gl.RGBA, gl.UNSIGNED_INT, null);
-        
+                      0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

@@ -453,13 +453,15 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 
 		fragment_glsl_code() {
 			return `
-				uniform sampler2D shadowMap;
+				uniform sampler2D shadowmap;
 				uniform sampler2D texture;
 
 				void main() {
 					vec3 vertex_relative_to_light = positionFromLight.xyz / positionFromLight.w;
 					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
+
 					float shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy).r;
+
 					bool shadowed = vertex_relative_to_light.z > shadowmap_dist + 0.000001;
 
 					if( GOURAUD || COLOR_NORMALS )    // Do smooth "Phong" shading unless options like "Gouraud mode" are wanted instead.
@@ -469,13 +471,12 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 					}                                 // If we get this far, calculate Smooth "Phong" Shading as opposed to Gouraud Shading.
 					
 					// Phong shading is not to be confused with the Phong Reflection Model.
-					vec4 tex_color = texture2D( texture, f_tex_coord );                    // Sample the texture image in the correct place.
+					vec4 tex_color = texture2D( shadowmap, vertex_relative_to_light.xy );                    // Sample the texture image in the correct place.
 					float s = 1.0;
 					
 					if (shadowed) {
 						s = 0.5;
 					}
-
 					// Compute an initial (ambient) color:
 					if( USE_TEXTURE ) {
 						gl_FragColor = vec4( s * ( tex_color.xyz + shapeColor.xyz ) * ambient, shapeColor.w * tex_color.w ); 
@@ -484,7 +485,7 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 						gl_FragColor = vec4( shapeColor.xyz * ambient, shapeColor.w );
 					}
 
-					gl_FragColor.xyz += phong_model_lights( N, shadowed );                   // Compute the final color with contributions from lights.				
+					gl_FragColor.xyz += phong_model_lights( N, shadowed ); // Compute the final color with contributions from lights.
 				}
 			`;
 		}
@@ -536,10 +537,8 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
             gl.uniform1fv(gpu.attenuation_factor_loc, lightAttenuations_flattened);
             
             // Binding the shadow map for the shaders
-            let shadowmap_loc = gl.getUniformLocation(this.program, "shadowmap")
-            gl.uniform1i(shadowmap_loc, 0);
-            let texture_loc = gl.getUniformLocation(this.program, "texture")
-            gl.uniform1i(texture_loc, 1);
+            gl.uniform1i(gpu.shadowmap_loc, 0);
+            gl.uniform1i(gpu.texture_loc, 1);
             
         }
 
@@ -557,47 +556,6 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
             gl.uniformMatrix3fv(gpu.inverse_transpose_modelview_loc, false, Mat.flatten_2D_to_1D(inv_CM));        	
         }
 	}
-
-// Currently used to shade the grass tiles
-class Tiling_Shadow_Shader extends Shadow_Phong_Shader {
-	fragment_glsl_code() {
-		return `
-			uniform sampler2D shadowMap;
-			uniform sampler2D texture;
-
-			void main() {
-				vec3 vertex_relative_to_light = positionFromLight.xyz / positionFromLight.w;
-				vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
-
-				float shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy).r;
-				bool shadowed = vertex_relative_to_light.z > shadowmap_dist + 0.000001;
-
-				if (GOURAUD || COLOR_NORMALS) {
-					gl_FragColor = VERTEX_COLOR;
-					return;
-				}
-
-				vec4 tex_color = texture2D(texture, f_tex_coord * 20.0);
-
-				float s = 1.0;
-
-				if (shadowed) {
-					s = 0.5;
-				}
-
-				if (USE_TEXTURE) {
-					gl_FragColor = vec4(s * (tex_color.xyz + shapeColor.xyz) * ambient, shapeColor.w * tex_color.w);
-				}
-
-				else {
-					gl_FragColor = vec4(shapeColor.xyz * ambient, shapeColor.w);
-				}
-
-				gl_FragColor.xyz += phong_model_lights(N, shadowed);
-			}
-		`;
-	}
-}
 
 class Shadow_Shader extends Shader {
 	constructor (gl) {
@@ -639,18 +597,16 @@ class Shadow_Shader extends Shader {
 
 		gl.uniformMatrix4fv(gpu.light_transform_loc, false, lightTransforms_flattened);
 		gl.uniform4fv(gpu.light_color_loc, lightColors_flattened);
+
 	}
 
 	shared_glsl_code() {
 		return `
-			precision mediump float;
+		    precision mediump float;
 
 			uniform float red;
 			const int N_LIGHTS = 1;
 			uniform vec4 lightPosition[N_LIGHTS], lightColor[N_LIGHTS];
-
-			varying vec4 positionFromLight;
-			varying world_position;
 		`;
 	}
 
@@ -666,66 +622,16 @@ class Shadow_Shader extends Shader {
 
 			void main() {
 				gl_Position = projection_camera_model_transform * vec4(object_space_pos, 1.0);
-				world_position = (model_transform * vec4(object_space_pos, 1.0));
-
-				for(int i = 0; i < N_LIGHTS; i++) {
-					positionFromLight = projection_transform * light_transform[i] * world_position;
-				}
 			}
 		`;
 	}
 
 	fragment_glsl_code() {
 		return `
-			uniform sampler2D shadowmap;
-			bool in_shadow (vec4 vert) {
-				vec3 vertex_relative_to_light = vert.xyz / vert.w;
-				vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
-
-				float shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy).r;
-				return vertex_relative_to_light.z > shadowmap_dist + 0.00001;
-			}
-
 			void main() {
-				vec3 vertex_relative_to_light = positionFromLight.xyz / position.w;
-				vertex_relative_to_light = vertex_relative_to_light* 0.5 + 0.5;
-
-				vec4 shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy);
-				gl_FragColor = shadowmap_dist;
-
-				if (in_shadow(positionFromLight)) {
-					gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-				}
-
-				else {
-					gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
-				}
-			}
-		`;
-	}
-}
-
-class Texture_Tile extends Phong_Shader {
-	fragment_glsl_code() {
-		return `
-			uniform sampler2D texture;
-
-			void main() {
-				if (GOURAUD || COLOR_NORMALS) {
-					gl_FragColor = VERTEX_COLOR;
-					return;
-				}
-
-				vec4 tex_color = texture2D(texture, f_tex_coord * 16.0);
-
-				if (USE_TEXTURE) {
-					gl_FragColor = vec4((tex_color.xyz + shapeColor.xyz) * ambient, shapeColor.w * tex_color.w);
-				}
-				else {
-					gl_FragColor = vec4(shapeColor.xyz * ambient, shapeColor.w);
-				}
-
-				gl_FragColor.xyz += phong_model_lights(N);
+				gl_FragColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0);
+				// gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
+				// gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
 			}
 		`;
 	}

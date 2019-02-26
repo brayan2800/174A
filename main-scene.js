@@ -4,14 +4,14 @@ class Assignment_Two_Skeleton extends Scene_Component {
         super(context, control_box);
         
         const gl = context.gl;
-        
+
         // First, include a secondary Scene that provides movement controls:
         if(!context.globals.has_controls)
             context.register_scene_component(new Movement_Controls(context, control_box.parentElement.insertCell()));
 
         // Locate the camera here (inverted matrix).
         const r = context.width / context.height;
-        context.globals.graphics_state.camera_transform = Mat4.translation([-241.06, -25, 82.19]);
+        context.globals.graphics_state.camera_transform = Mat4.translation([-180, -35, 20]);
         context.globals.graphics_state.projection_transform = Mat4.perspective(Math.PI / 4, r, .1, 1000);
 
         // At the beginning of our program, load one of each of these shape
@@ -69,6 +69,14 @@ class Assignment_Two_Skeleton extends Scene_Component {
             ambient: 1.0,
             diffusivity: .4
         });
+        
+        this.sky_lf = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
+           specularity: 0,
+           ambient: 1.0,
+           texture: context.get_instance("assets/hills_bk.png", false)
+        });
+        
+        this.shadowmap = context.get_instance(Shadow_Shader).material();
 
         // Load some textures for the demo shapes
         this.shape_materials = {};
@@ -92,11 +100,70 @@ class Assignment_Two_Skeleton extends Scene_Component {
                 texture: context.get_instance(shape_textures[t])
             });
         
-        this.lights = [new Light(gl, Mat4.look_at(Vec.of(50, 10, 50), Vec.of(10, 0, 10), Vec.of(0, 1, 0)), Vec.of(240, 60, -220, 1), Color.of(1, .4, 1, 1), 100000)];
+        this.lights = [new Light(gl, Mat4.look_at(
+                                          Vec.of(180.0, 35.0, -20.0), // Position of the light
+                                          Vec.of(240.0, 30.0, -220.0), // Location of where it is looking
+                                          Vec.of(0, 1, 0)), // Up Vector
+                                          Vec.of(180.0, 35.0, -20.0, 1.0), // Position of the light
+                                          Color.of(1.0, 0.0, 0.0, 1.0), 100000)];
 
         this.t = 0;
 
         
+    }
+    
+    renderShadowmap(graphics_state) {
+        // Drawing UFO
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(240, 30, -220)));
+
+            // Draw the base
+            this.shapes["torus"].draw(
+                graphics_state,
+                m.times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
+                  times(Mat4.scale(Vec.of(1, 1, 0.3))),
+                this.shadowmap);
+
+            // Draw the top
+            this.shapes["ball"].draw(
+               graphics_state,
+               m.times(Mat4.scale(Vec.of(5.5, 4, 5.5))).
+                 times(Mat4.translation(Vec.of(0, 0.15, 0))),
+               this.shadowmap);
+
+            for (let multiplier = 0; multiplier < 7; multiplier++) {
+                this.shapes["ball"].draw(
+                    graphics_state,
+                    m.times(Mat4.rotation(multiplier*(2*Math.PI/7), Vec.of(0, 1, 0))).
+                      times(Mat4.scale(Vec.of(1.2, 1, 1.2))).
+                      times(Mat4.translation(Vec.of(0, 0.8, 6.0))),
+                    this.shadowmap);
+            }
+
+            // Draws the bottom
+            this.shapes["ball"].draw(
+               graphics_state,
+               m.times(Mat4.scale(Vec.of(5.5, 4, 5.5))).
+                 times(Mat4.translation(Vec.of(0, 0.12, 0))),
+               this.shadowmap);
+
+            // Beam won't cause a shadow
+        });
+        
+        // Drawing Plane
+//         this.lights[0].renderDepthBuffer(graphics_state, () => {
+//             let m = Mat4.identity();
+//             const grass_length = 10;
+//             const n_columns = 20;
+//             const size = grass_length*n_columns;
+
+//             this.shapes["square"].draw(
+//                     graphics_state,
+//                     m.times(Mat4.translation(Vec.of(size-grass_length,30, -2*size + grass_length))).
+//                     times(Mat4.scale(Vec.of(200,200, 1))),
+//                     this.shadowmap);
+//         });
     }
 
     draw_ufo(graphics_state, m, t) {
@@ -161,19 +228,11 @@ class Assignment_Two_Skeleton extends Scene_Component {
             this.t += graphics_state.animation_delta_time / 1000;
         const t = this.t;
 
-        
-        
+        // skybox
         this.draw_skybox(graphics_state);
 
-        //cow 
+        // ufo
         let m = Mat4.identity();
-        this.shapes["ball"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(0,1,0))).
-                    times(Mat4.scale(Vec.of(1,1,2))),
-                    this.shape_materials["ball"] || this.plastic);
-      
-        m = Mat4.identity();
         m = m.times(Mat4.translation(Vec.of(240, 30, -220)));
         this.draw_ufo(graphics_state, m, t);
    }
@@ -218,14 +277,25 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     times(Mat4.rotation(Math.PI/2, Vec.of(0, 0, 1))).
                     times(Mat4.scale(Vec.of(200,200, 1))),
                     this.shape_materials["square_sky"] || this.plastic);
+
         //sky_Left
         this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(-grass_length, 30, -size+grass_length))).
-                    times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).
-                    times(Mat4.scale(Vec.of(200,200, 1))),
-                    this.shape_materials["square_LF"] || this.plastic);
+                     graphics_state,
+                     m.times(Mat4.translation(Vec.of(-grass_length, 30, -size+grass_length))).
+                     times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).
+                     times(Mat4.scale(Vec.of(200,200, 1))),
+                     this.shape_materials["square_LF"] || this.plastic);
+
+//         this.lights[0].renderDepthBuffer(graphics_state, () => {
+//             this.shapes["square"].draw(
+//                     graphics_state,
+//                     m.times(Mat4.translation(Vec.of(-grass_length, 30, -size + grass_length))).
+//                     times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).
+//                     times(Mat4.scale(Vec.of(200,200, 1))),
+//                     this.shadowmap);
+//         });
         
+
         //sky_right
         this.shapes["square"].draw(
                     graphics_state,
@@ -235,17 +305,26 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     this.shape_materials["square_RT"] || this.plastic);
 
         //sky_back
-        this.shapes["square"].draw(
+//         this.shapes["square"].draw(
+//                     graphics_state,
+//                     m.times(Mat4.translation(Vec.of(size-grass_length,30, -2*size + grass_length))).
+//                     times(Mat4.scale(Vec.of(200,200, 1))),
+//                     this.shape_materials["square_BK"] || this.plastic);
+
+        this.renderShadowmap(graphics_state);
+
+        this.lights[0].renderOutputBuffer(graphics_state, () => {
+            this.shapes["square"].draw(
                     graphics_state,
-                    m.
-                    times(Mat4.translation(Vec.of(size-grass_length,30, -2*size+ grass_length))).
+                    m.times(Mat4.translation(Vec.of(size-grass_length,30, -2*size + grass_length))).
                     times(Mat4.scale(Vec.of(200,200, 1))),
-                    this.shape_materials["square_BK"] || this.plastic);
+                    this.sky_lf);
+        });
+
         //sky_front
         this.shapes["square"].draw(
                     graphics_state,
-                    m.
-                    times(Mat4.translation(Vec.of(size - grass_length,30,grass_length))).
+                    m.times(Mat4.translation(Vec.of(size - grass_length,30,grass_length))).
                     times(Mat4.rotation(Math.PI, Vec.of(0, 1, 0))).
                     times(Mat4.scale(Vec.of(200,200, 1))),
                     this.shape_materials["square_FR"] || this.plastic);
