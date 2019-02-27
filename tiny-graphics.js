@@ -599,6 +599,8 @@ class Light {
 
         this.tex_width = 1024;
         this.tex_height = 1024;
+        
+        this.clear_shadowmap = true;
 
         // We need to render from the light POV onto this texture        
         this.shadow_color_buf = gl.createTexture();
@@ -631,14 +633,19 @@ class Light {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
         gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
         
-        //
         gl.viewport(0, 0, this.tex_width, this.tex_height);
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        //
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        
+        if (this.clear_shadowmap) {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            this.clear_shadowmap = false;
+        }
 
+        
         // Hold the camera transform to restore later
-        let actual_camera_transform = graphics_state.camera_transform;
+        var actual_camera_transform = graphics_state.camera_transform;
         // Change the camera transform to be from the light's perspective
         // Because we want to render from the light
         graphics_state.camera_transform = this.transform;

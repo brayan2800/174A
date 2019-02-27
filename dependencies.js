@@ -164,7 +164,7 @@ window.Phong_Shader = window.classes.Phong_Shader = class Phong_Shader extends S
                     vec3 H = normalize( L[i] + E );
                     
                     float attenuation_multiplier = 1.0;// / (1.0 + attenuation_factor[i] * (dist[i] * dist[i]));
-                    float diffuse  =      max( dot(N, L[i]), 0.0 );
+                    float diffuse = max( dot(N, L[i]), 0.0 );
                     float specular = pow( max( dot(N, H), 0.0 ), smoothness );
 
                     result += attenuation_multiplier * ( shapeColor.xyz * diffusivity * diffuse + lightColor[i].xyz * specularity * specular );
@@ -385,21 +385,19 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 				varying vec3 L, H;
 				varying float dist;
 				varying vec4 positionFromLight;
+				varying vec4 shadowPos;
 
-				vec3 phong_model_lights (vec3 N, bool shadowed) {
+				const mat4 texUnitConverter = mat4(0.5, 0.0, 0.0, 0.0, 0.0, 0.5,
+				0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.5, 0.5, 1.0);
+
+				vec3 phong_model_lights (vec3 N, bool shadowed, float amountInLight) {
 					vec3 result = vec3(0.0);
-
-					float s = 1.0;
-
-					if (shadowed) {
-						s = 0.5;
-					}
 
 					float attenuation_multiplier = 1.0 / (1.0 + attenuation_factor * (dist * dist));
 					float diffuse = max(dot(N, L), 0.0);
 					float specular = pow(max(dot(N, H), 0.0), smoothness);
 
-					result += s * attenuation_multiplier * (shapeColor.xyz * diffusivity * diffuse + lightColor.xyz * specularity * specular);
+					result += 1.0 * attenuation_multiplier * (shapeColor.xyz * diffusivity * diffuse + lightColor.xyz * specularity * specular);
 
 					return result;
 				}
@@ -422,6 +420,10 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 					vec4 world_position = (model_transform * vec4(object_space_pos, 1.0));
 					positionFromLight = projection_transform * light_transform * world_position;
 					
+					// Calulating shadowPos
+					shadowPos = texUnitConverter * projection_transform * light_transform * world_position;
+
+
 					if( COLOR_NORMALS )                                     // Bypass all lighting code if we're lighting up vertices some other way.
 					{ 
 						VERTEX_COLOR = vec4( N[0] > 0.0 ? N[0] : sin( animation_time * 3.0   ) * -N[0],             // In "normals" mode, 
@@ -444,8 +446,8 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 					if( GOURAUD )                   // Gouraud shading mode?  If so, finalize the whole color calculation here in the vertex shader, 
 					{                               // one per vertex, before we even break it down to pixels in the fragment shader.   As opposed 
 					                                // to Smooth "Phong" Shading, where we *do* wait to calculate final color until the next shader.
-					VERTEX_COLOR      = vec4( shapeColor.xyz * ambient, shapeColor.w);
-					VERTEX_COLOR.xyz += phong_model_lights( N, false );
+						VERTEX_COLOR      = vec4( shapeColor.xyz * ambient, shapeColor.w);
+						VERTEX_COLOR.xyz += phong_model_lights( N, false, 1.0);
 					}
 		        }
 			`;
@@ -455,14 +457,46 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 			return `
 				uniform sampler2D shadowmap;
 				uniform sampler2D texture;
+				
+				float decodeFloat (vec4 color) {
+					const vec4 bitShift = vec4(
+						1.0 / (256.0 * 256.0 * 256.0),
+						1.0 / (256.0 * 256.0),
+						1.0 / 256.0,
+						1
+					);
+
+					return dot(color, bitShift);
+				}
 
 				void main() {
-					vec3 vertex_relative_to_light = positionFromLight.xyz / positionFromLight.w;
-					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
+					// Calculating Shadow
+					float shadowMapSize = 1024.0;
+					vec3 fragmentDepth = shadowPos.xyz;
+					float shadowAcneRemover = 460.0;
+					fragmentDepth.z -= shadowAcneRemover;
 
-					float shadowmap_dist = texture2D(shadowmap, vertex_relative_to_light.xy).r;
+					float texelSize = 1.0 / (shadowMapSize);
+					float amountInLight = 0.0;
+					
+ 					vec3 vertex_relative_to_light = positionFromLight.xyz / positionFromLight.w;
+ 					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
+					fragmentDepth = vertex_relative_to_light;
 
-					bool shadowed = vertex_relative_to_light.z > shadowmap_dist + 0.000001;
+					fragmentDepth.z -= 0.00009;
+					
+					float texelDepth = 0.0;
+
+					for (int x = -1; x <= 1; x++) {
+						for (int y = -1; y <= 1; y++) {
+							texelDepth = decodeFloat(texture2D(shadowmap, fragmentDepth.xy + vec2(x, y) * texelSize));
+							if (fragmentDepth.z < texelDepth) {
+								amountInLight += 1.0;
+							}
+						}
+					}
+		
+					amountInLight /= 9.0;
 
 					if( GOURAUD || COLOR_NORMALS )    // Do smooth "Phong" shading unless options like "Gouraud mode" are wanted instead.
 					{
@@ -471,21 +505,43 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 					}                                 // If we get this far, calculate Smooth "Phong" Shading as opposed to Gouraud Shading.
 					
 					// Phong shading is not to be confused with the Phong Reflection Model.
-					vec4 tex_color = texture2D( shadowmap, vertex_relative_to_light.xy );                    // Sample the texture image in the correct place.
-					float s = 1.0;
+					vec4 tex_color = texture2D( texture, f_tex_coord );                    // Sample the texture image in the correct place.
 					
-					if (shadowed) {
-						s = 0.5;
+// 					vec4 tex_color = vec4(0.0, 0.0, 0.0, 1.0);
+// 					if (amountInLight == 1.0 /*amountInLight >= 0.1 && amountInLight <= 0.12*/) {
+// 						tex_color = vec4(1.0, 1.0, 1.0, 1.0);
+// 					}
+					
+					// This is the value of a fragment that is in total darkness
+					float light_addition = 0.55;
+					
+					// Add some amount to amountInLight so as to not have pitch black shadows
+					// This has four passes for three different amountInLight values
+					// Specifically 1/9, 2/9, 3/9, and 4/9
+					// Helps make the edges of the shadows better colors
+
+					if (amountInLight < 0.2) {
+						amountInLight += light_addition;
 					}
+					else if (amountInLight < 0.3) {
+						amountInLight += 0.25;
+					}
+					else if (amountInLight < 0.4) {
+						amountInLight += 0.15;
+					}
+					else if (amountInLight < 0.5) {
+						amountInLight += 0.1;
+					}
+
 					// Compute an initial (ambient) color:
 					if( USE_TEXTURE ) {
-						gl_FragColor = vec4( s * ( tex_color.xyz + shapeColor.xyz ) * ambient, shapeColor.w * tex_color.w ); 
+						gl_FragColor = vec4( amountInLight * ( tex_color.xyz + shapeColor.xyz ) * ambient, shapeColor.w * tex_color.w ); 
 					}
 					else {
 						gl_FragColor = vec4( shapeColor.xyz * ambient, shapeColor.w );
 					}
 
-					gl_FragColor.xyz += phong_model_lights( N, shadowed ); // Compute the final color with contributions from lights.
+					gl_FragColor.xyz += phong_model_lights( N, true, amountInLight); // Compute the final color with contributions from lights.
 				}
 			`;
 		}
@@ -607,6 +663,8 @@ class Shadow_Shader extends Shader {
 			uniform float red;
 			const int N_LIGHTS = 1;
 			uniform vec4 lightPosition[N_LIGHTS], lightColor[N_LIGHTS];
+
+			varying vec3 fPos;
 		`;
 	}
 
@@ -621,6 +679,7 @@ class Shadow_Shader extends Shader {
 			uniform mat4 light_transform[N_LIGHTS];
 
 			void main() {
+				fPos = (model_transform * vec4(object_space_pos, 1.0)).xyz;
 				gl_Position = projection_camera_model_transform * vec4(object_space_pos, 1.0);
 			}
 		`;
@@ -628,8 +687,39 @@ class Shadow_Shader extends Shader {
 
 	fragment_glsl_code() {
 		return `
+			
+			vec4 encodeFloat (float depth) {
+				const vec4 bitShift = vec4(
+    				256 * 256 * 256,
+    				256 * 256,
+    				256,
+    				1.0
+  				);
+  				const vec4 bitMask = vec4(
+    				0,
+    				1.0 / 256.0,
+    				1.0 / 256.0,
+    				1.0 / 256.0
+  				);
+  				vec4 comp = fract(depth * bitShift);
+  				comp -= comp.xxyz * bitMask;
+  				return comp;
+			}
+
 			void main() {
-				gl_FragColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0);
+// 				vec2 shadowClipNearFar = vec2(0.05, 15.0);
+				
+// 				vec3 fromLightToFrag = (fPos - lightPosition[0].xyz);
+
+// 				float lightFragDist = 
+// 				(length(fromLightToFrag) - shadowClipNearFar.x)
+// 				/
+// 				(shadowClipNearFar.y - shadowClipNearFar.x);
+				
+// 				gl_FragColor = vec4(lightFragDist, lightFragDist, lightFragDist, 1.0);
+				
+				gl_FragColor = encodeFloat(gl_FragCoord.z);
+
 				// gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
 				// gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
 			}

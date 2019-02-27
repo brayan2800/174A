@@ -113,6 +113,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
     }
     
     renderShadowmap(graphics_state) {
+
         // Drawing UFO
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
@@ -150,20 +151,58 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
             // Beam won't cause a shadow
         });
-        
-        // Drawing Plane
-//         this.lights[0].renderDepthBuffer(graphics_state, () => {
-//             let m = Mat4.identity();
-//             const grass_length = 10;
-//             const n_columns = 20;
-//             const size = grass_length*n_columns;
 
-//             this.shapes["square"].draw(
-//                     graphics_state,
-//                     m.times(Mat4.translation(Vec.of(size-grass_length,30, -2*size + grass_length))).
-//                     times(Mat4.scale(Vec.of(200,200, 1))),
-//                     this.shadowmap);
-//         });
+        // Drawing UFO
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(200, 50, -220)));
+
+            // Draw the base
+            this.shapes["torus"].draw(
+                graphics_state,
+                m.times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
+                  times(Mat4.scale(Vec.of(1, 1, 0.3))),
+                this.shadowmap);
+
+            // Draw the top
+            this.shapes["ball"].draw(
+               graphics_state,
+               m.times(Mat4.scale(Vec.of(5.5, 4, 5.5))).
+                 times(Mat4.translation(Vec.of(0, 0.15, 0))),
+               this.shadowmap);
+
+            for (let multiplier = 0; multiplier < 7; multiplier++) {
+                this.shapes["ball"].draw(
+                    graphics_state,
+                    m.times(Mat4.rotation(multiplier*(2*Math.PI/7), Vec.of(0, 1, 0))).
+                      times(Mat4.scale(Vec.of(1.2, 1, 1.2))).
+                      times(Mat4.translation(Vec.of(0, 0.8, 6.0))),
+                    this.shadowmap);
+            }
+
+            // Draws the bottom
+            this.shapes["ball"].draw(
+               graphics_state,
+               m.times(Mat4.scale(Vec.of(5.5, 4, 5.5))).
+                 times(Mat4.translation(Vec.of(0, 0.12, 0))),
+               this.shadowmap);
+
+            // Beam won't cause a shadow
+        });
+
+        // Drawing Plane
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            const grass_length = 10;
+            const n_columns = 20;
+            const size = grass_length*n_columns;
+
+            this.shapes["square"].draw(
+                    graphics_state,
+                    m.times(Mat4.translation(Vec.of(size-grass_length,30, -2*size + grass_length))).
+                    times(Mat4.scale(Vec.of(200,200, 1))),
+                    this.shadowmap);
+        });
     }
 
     draw_ufo(graphics_state, m, t) {
@@ -234,6 +273,11 @@ class Assignment_Two_Skeleton extends Scene_Component {
         // ufo
         let m = Mat4.identity();
         m = m.times(Mat4.translation(Vec.of(240, 30, -220)));
+        this.draw_ufo(graphics_state, m, t);
+    
+        // other ufo
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(200, 50, -220)));
         this.draw_ufo(graphics_state, m, t);
    }
 
