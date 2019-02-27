@@ -635,8 +635,7 @@ class Light {
         
         gl.viewport(0, 0, this.tex_width, this.tex_height);
         gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
-        
+
         if (this.clear_shadowmap) {
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -679,25 +678,19 @@ class Light {
         
         graphics_state.light = undefined;
     }
-
+    
+    // Call once every tick after rendering all objects of a scene to clear the shadowmap for the next scene
     clearDepthBuffer() {
+
         var gl = this.gl;
         
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
-        
-        gl.deleteTexture(this.shadow_color_buf);
-
-        this.shadow_color_buf = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
-                      0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
 
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.shadow_color_buf, 0);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     }

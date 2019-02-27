@@ -483,7 +483,7 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
  					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
 					fragmentDepth = vertex_relative_to_light;
 
-					fragmentDepth.z -= 0.00009;
+					fragmentDepth.z -= 0.00007;
 					
 					float texelDepth = 0.0;
 
@@ -516,21 +516,24 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 					float light_addition = 0.55;
 					
 					// Add some amount to amountInLight so as to not have pitch black shadows
-					// This has four passes for three different amountInLight values
-					// Specifically 1/9, 2/9, 3/9, and 4/9
+					// This has five passes for three different amountInLight values
+					// Specifically 0/9, 1/9, 2/9, 3/9, and 4/9
 					// Helps make the edges of the shadows better colors
-
-					if (amountInLight < 0.2) {
-						amountInLight += light_addition;
+					
+					if (amountInLight < 0.1) {
+						amountInLight += 0.55;
+					}
+					else if (amountInLight < 0.2) {
+						amountInLight += 0.38;
 					}
 					else if (amountInLight < 0.3) {
-						amountInLight += 0.25;
+						amountInLight += 0.26;
 					}
 					else if (amountInLight < 0.4) {
-						amountInLight += 0.15;
+						amountInLight += 0.18;
 					}
 					else if (amountInLight < 0.5) {
-						amountInLight += 0.1;
+						amountInLight += 0.15;
 					}
 
 					// Compute an initial (ambient) color:
@@ -540,8 +543,9 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 					else {
 						gl_FragColor = vec4( shapeColor.xyz * ambient, shapeColor.w );
 					}
-
-					gl_FragColor.xyz += phong_model_lights( N, true, amountInLight); // Compute the final color with contributions from lights.
+					
+					// TODO: Check if this is at all necessary
+					// gl_FragColor.xyz += phong_model_lights( N, true, amountInLight); // Compute the final color with contributions from lights.
 				}
 			`;
 		}
@@ -706,22 +710,8 @@ class Shadow_Shader extends Shader {
   				return comp;
 			}
 
-			void main() {
-// 				vec2 shadowClipNearFar = vec2(0.05, 15.0);
-				
-// 				vec3 fromLightToFrag = (fPos - lightPosition[0].xyz);
-
-// 				float lightFragDist = 
-// 				(length(fromLightToFrag) - shadowClipNearFar.x)
-// 				/
-// 				(shadowClipNearFar.y - shadowClipNearFar.x);
-				
-// 				gl_FragColor = vec4(lightFragDist, lightFragDist, lightFragDist, 1.0);
-				
+			void main() {				
 				gl_FragColor = encodeFloat(gl_FragCoord.z);
-
-				// gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);
-				// gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
 			}
 		`;
 	}
