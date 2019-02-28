@@ -590,11 +590,111 @@ class Graphics_State {
 
 // The properties of one light in the scene (Two 4x1 Vecs and a scalar)
 class Light {
-    constructor(position, color, size) {
+    constructor(gl, transform, position, color, size) {
         Object.assign(this, {
-            position, color, attenuation: 1 / size
+            gl, transform, position, color, attenuation: 1 / size
         });
+        
+        this.gl = gl;
+
+        this.tex_width = 1024;
+        this.tex_height = 1024;
+        
+        this.clear_shadowmap = true;
+
+        // We need to render from the light POV onto this texture        
+        this.shadow_color_buf = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.tex_width, this.tex_height,
+                      0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        
+        this.shadow_render_buffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16,
+                               this.tex_width, this.tex_height);
+        
+        this.shadow_frame_buf = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.shadow_color_buf, 0);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.shadow_render_buffer);
+       
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
     }
+
+    renderDepthBuffer(graphics_state, draw_fun) {
+        var gl = this.gl;
+            
+        gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
+        
+        gl.viewport(0, 0, this.tex_width, this.tex_height);
+        gl.enable(gl.DEPTH_TEST);
+
+        if (this.clear_shadowmap) {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            this.clear_shadowmap = false;
+        }
+
+        
+        // Hold the camera transform to restore later
+        var actual_camera_transform = graphics_state.camera_transform;
+        // Change the camera transform to be from the light's perspective
+        // Because we want to render from the light
+        graphics_state.camera_transform = this.transform;
+
+        // Draw the whole state from the light's perspective
+        draw_fun();
+
+        // Restore the actual camera transform
+        graphics_state.camera_transform = actual_camera_transform;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        
+        // Reset the viewport
+        gl.viewport(0, 0, 1080, 600)
+
+    }
+
+    renderOutputBuffer(graphics_state, draw_fun) {
+        var gl = this.gl;
+
+        graphics_state.light = this;
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
+        
+        draw_fun();
+        
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        
+        graphics_state.light = undefined;
+    }
+    
+    // Call once every tick after rendering all objects of a scene to clear the shadowmap for the next scene
+    clearDepthBuffer() {
+
+        var gl = this.gl;
+        
+        gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.shadow_frame_buf);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.shadow_render_buffer);
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    }
+
 };
 
 // Just an alias.  Colors are special 4x1 vectors expressed as ( red, green, blue, opacity ) each from 0 to 1.
