@@ -109,25 +109,33 @@ class Assignment_Two_Skeleton extends Scene_Component {
                                           Vec.of(240.0, 30.0, -220.0), // Location of where it is looking
                                           Vec.of(0, 1, 0)), // Up Vector
                                           Vec.of(250.0, 230.0, -250.0, 1.0), // Position of the light
-                                          Color.of(1.0, 0.0, 0.0, 1.0), 100000)];
+                                          Color.of(1.0, 1.0, 1.0, 0.7), 70000)];
 
         this.t = 0;
 
         
     }
     
+    // All objects that must be rendered need to be rendered to the shadowmap
     renderShadowmap(graphics_state, t) {
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(200, 50, -220)));
-            this.draw_ufo(graphics_state, m, true);
+            m = m.times(Mat4.translation(Vec.of(220.0, 8.0, -220.0)));  
+            this.draw_cow(graphics_state, m, true);
         });
 
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(240 /*+ 20*Math.sin(0.2*(this.t))*/, 30, -220)));
+            m = m.times(Mat4.translation(Vec.of(/*240*/ 200 + 20*Math.sin(0.2*(this.t)), 30, -220)));
             this.draw_ufo(graphics_state, m, true);
         });
+    }
+    
+    draw_cow(graphics_state, m, depth_test) {
+        this.shapes["ball"].draw(
+                    graphics_state,
+                    m.times(Mat4.scale(Vec.of(3.0, 3.0, 9.0))),
+                    (depth_test ? this.shadowmap : this.shape_materials["ball"]));
     }
 
     draw_ufo(graphics_state, m, depth_test) {
@@ -193,18 +201,18 @@ class Assignment_Two_Skeleton extends Scene_Component {
         if (!this.paused)
             this.t += graphics_state.animation_delta_time / 1000;
         const t = this.t;
+        let m = Mat4.identity();
+
+        //cow
+        m = m.times(Mat4.translation(Vec.of(220.0, 50.0, -220.0)));
+        this.draw_cow(graphics_state, m, false);
 
         // skybox
         this.draw_skybox(graphics_state);
 
         // ufo
-        let m = Mat4.identity();
-        m = m.times(Mat4.translation(Vec.of(240, 30, -220)));
-        this.draw_ufo(graphics_state, m, false);
-    
-        // other ufo
         m = Mat4.identity();
-        m = m.times(Mat4.translation(Vec.of(200, 50, -220)));
+        m = m.times(Mat4.translation(Vec.of(200 + 20*Math.sin(0.2*(this.t)), 30, -220)));
         this.draw_ufo(graphics_state, m, false);
    }
 

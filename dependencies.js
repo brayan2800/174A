@@ -483,7 +483,7 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
  					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
 					fragmentDepth = vertex_relative_to_light;
 
-					fragmentDepth.z -= 0.00007;
+					fragmentDepth.z += 0.00015;
 					
 					float texelDepth = 0.0;
 
@@ -507,10 +507,11 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
 					// Phong shading is not to be confused with the Phong Reflection Model.
 					vec4 tex_color = texture2D( texture, f_tex_coord );                    // Sample the texture image in the correct place.
 					
-// 					vec4 tex_color = vec4(0.0, 0.0, 0.0, 1.0);
-// 					if (amountInLight == 1.0 /*amountInLight >= 0.1 && amountInLight <= 0.12*/) {
-// 						tex_color = vec4(1.0, 1.0, 1.0, 1.0);
-// 					}
+					// Used for debugging the shadowmap
+//  					vec4 tex_color = vec4(0.0, 0.0, 0.0, 1.0);
+//  					if (fragmentDepth.z - texelDepth < -0.00035 /*amountInLight >= 0.1 && amountInLight <= 0.12*/) {
+//  						tex_color = vec4(1.0, 1.0, 1.0, 1.0);
+//  					}
 					
 					// This is the value of a fragment that is in total darkness
 					float light_addition = 0.55;
