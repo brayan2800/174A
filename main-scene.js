@@ -120,7 +120,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
     renderShadowmap(graphics_state, t) {
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(220.0, 8.0, -220.0)));  
+            m = m.times(Mat4.translation(Vec.of(220.0, 5.0, -220.0)));  
             this.draw_cow(graphics_state, m, true);
         });
 
@@ -204,7 +204,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         let m = Mat4.identity();
 
         //cow
-        m = m.times(Mat4.translation(Vec.of(220.0, 50.0, -220.0)));
+        m = m.times(Mat4.translation(Vec.of(220.0, 5.0, -220.0)));
         this.draw_cow(graphics_state, m, false);
 
         // skybox
