@@ -11,6 +11,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         // Locate the camera here (inverted matrix).
         const r = context.width / context.height;
+      
         context.globals.graphics_state.camera_transform = Mat4.look_at(
                                                           Vec.of(180.0, 40.0, -50.0), // Position of the light
                                                           Vec.of(200.0, 50.0, -220.0), // Location of where it is looking
@@ -212,6 +213,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         // ufo
         m = Mat4.identity();
+
         m = m.times(Mat4.translation(Vec.of(200 + 20*Math.sin(0.2*(this.t)), 30, -220)));
         this.draw_ufo(graphics_state, m, false);
    }
