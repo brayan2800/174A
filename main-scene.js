@@ -128,7 +128,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(200 + 20*Math.sin(0.2*(this.t)), 30, -200)));
+            m = m.times(Mat4.translation(Vec.of(180 + 20*Math.sin(0.2*(this.t)), 30, -200)));
             this.draw_ufo(graphics_state, m, true);
         });
     }
