@@ -483,14 +483,14 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
  					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
 					fragmentDepth = vertex_relative_to_light;
 
-					fragmentDepth.z += 0.00015;
+					fragmentDepth.z -= 0.000037;
 					
 					float texelDepth = 0.0;
 
 					for (int x = -1; x <= 1; x++) {
 						for (int y = -1; y <= 1; y++) {
 							texelDepth = decodeFloat(texture2D(shadowmap, fragmentDepth.xy + vec2(x, y) * texelSize));
-							if (fragmentDepth.z < texelDepth) {
+							if (fragmentDepth.z <= texelDepth) {
 								amountInLight += 1.0;
 							}
 						}

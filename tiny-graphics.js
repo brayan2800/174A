@@ -655,7 +655,8 @@ class Light {
         // Restore the actual camera transform
         graphics_state.camera_transform = actual_camera_transform;
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
         // Reset the viewport
         gl.viewport(0, 0, 1080, 600)
 
@@ -666,16 +667,10 @@ class Light {
 
         graphics_state.light = this;
 
-        gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.shadow_color_buf);
         
         draw_fun();
-        
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        
+                
         graphics_state.light = undefined;
     }
     

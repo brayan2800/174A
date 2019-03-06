@@ -87,6 +87,12 @@ class Assignment_Two_Skeleton extends Scene_Component {
            texture: context.get_instance("assets/test_floor.png", false)
         });
         
+        this.cow = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
+            specularity: 0,
+            ambient: 1.0,
+            texture: context.get_instance("assets/cow2.png", false)
+        });
+
         this.shadowmap = context.get_instance(Shadow_Shader).material();
 
         // Load some textures for the demo shapes
@@ -120,12 +126,13 @@ class Assignment_Two_Skeleton extends Scene_Component {
     
     // All objects that must be rendered need to be rendered to the shadowmap
     renderShadowmap(graphics_state, t) {
+        
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
             m = m.times(Mat4.translation(Vec.of(200, 10, -200)));  
             this.draw_cow(graphics_state, m, true);
         });
-
+        
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
             m = m.times(Mat4.translation(Vec.of(180 + 20*Math.sin(0.2*(this.t)), 30, -200)));
@@ -187,7 +194,6 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     this.shape_materials["square_FR"] || this.plastic);
 
         // testfloor
-        this.renderShadowmap(graphics_state);
 
         this.lights[0].renderOutputBuffer(graphics_state, () => {
             this.shapes["square"].draw(
@@ -197,14 +203,15 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     this.floor);
         });
 
-        this.lights[0].clearDepthBuffer();
    }
 
     draw_cow(graphics_state, m, depth_test) {
-        this.shapes["ball"].draw(
+        this.lights[0].renderOutputBuffer(graphics_state, () => {
+            this.shapes["ball"].draw(
                     graphics_state,
                     m.times(Mat4.scale(Vec.of(3.0, 3.0, 9.0))),
-                    (depth_test ? this.shadowmap : this.shape_materials["ball"]));
+                    (depth_test ? this.shadowmap : this.cow));
+        })
     }
 
     draw_ufo(graphics_state, m, depth_test) {
@@ -273,12 +280,15 @@ class Assignment_Two_Skeleton extends Scene_Component {
         
         let m = Mat4.identity();
 
-        //cow
-        m = m.times(Mat4.translation(Vec.of(200, 10, -200)));
-        this.draw_cow(graphics_state, m, false);
+        this.renderShadowmap(graphics_state);
 
         // skybox
         this.draw_skybox(graphics_state);
+
+        //cow
+        m = Mat4.identity()
+        m = m.times(Mat4.translation(Vec.of(200, 10, -200)));
+        this.draw_cow(graphics_state, m, false);
 
         // ufo
         let x_motion = 180 + 20*Math.sin(0.2*(this.t));
@@ -288,6 +298,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
         m = Mat4.identity();
         m = m.times(Mat4.translation(Vec.of(x_motion, 30, -200)));
         this.draw_ufo(graphics_state, m, false);
+
+        this.lights[0].clearDepthBuffer();
 
    }
 }
