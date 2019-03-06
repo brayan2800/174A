@@ -4,6 +4,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         super(context, control_box);
         
         const gl = context.gl;
+        this.gl = gl;
 
         // First, include a secondary Scene that provides movement controls:
         if(!context.globals.has_controls)
@@ -95,18 +96,14 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         this.shadowmap = context.get_instance(Shadow_Shader).material();
 
+        this.skybox_shader = context.get_instance(Skybox_Shader).material();
+
         // Load some textures for the demo shapes
         this.shape_materials = {};
         const shape_textures = {
-            ball: "assets/cow2.png",
-            square: "assets/grass2.png",
-            square_sky: "assets/hills_up.png",
-            square_LF: "assets/hills_lf.png",
-            square_RT: "assets/hills_rt.png",
-            square_BK: "assets/hills_bk.png",
-            square_FR: "assets/hills_ft.png",
-            testfloor: "assets/test_floor.png"
+            ball: "assets/cow2.png"
         };
+        
         for (let t in shape_textures)
             this.shape_materials[t] = this.texture_base.override({
                 texture: context.get_instance(shape_textures[t])
@@ -118,6 +115,13 @@ class Assignment_Two_Skeleton extends Scene_Component {
                                           Vec.of(0, 1, 0)), // Up Vector
                                           Vec.of(210, 230.0, -200, 1), // Position of the light
                                           Color.of(1.0, 1.0, 1.0, 0.7), 70000)];
+
+        this.skybox = new Skybox(gl, ["assets/hills_rt.png",
+                                      "assets/hills_lf.png",
+                                      "assets/test_floor.png",
+                                      "assets/hills_up.png",
+                                      "assets/hills_bk.png",
+                                      "assets/hills_ft.png"]);
 
         this.t = 0;
 
@@ -139,71 +143,37 @@ class Assignment_Two_Skeleton extends Scene_Component {
             this.draw_ufo(graphics_state, m, true);
         });
     }
-    
-    draw_skybox(graphics_state)
-   {
-        /* sides: 400 x 400 
-           floor: spans [(0,0,0), (400, 0, -400)] 
-           
-           Sides are shifted down to make floor-side transitions smoother
-           range inside skybox: [(0,0,0), (400, 230, -400)]
-        */
 
+   draw_floor(graphics_state) {
         let m = Mat4.identity().times(Mat4.translation(Vec.of(200, 0 ,-200)));
         const size = 200; 
-
-        //sky_up
-        //m = Mat4.identity();
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(0, size+30 ,0))).
-                    times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
-                    times(Mat4.rotation(Math.PI/2, Vec.of(0, 0, 1))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_sky"] || this.plastic);
-
-        //sky_Left
-        this.shapes["square"].draw(
-                     graphics_state,
-                     m.times(Mat4.translation(Vec.of(-size, 30, 0))).
-                     times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).
-                     times(Mat4.scale(Vec.of(size,size, 1))),
-                     this.shape_materials["square_LF"] || this.plastic);
-
-        //sky_right
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(size,30,0))).
-                    times(Mat4.rotation(Math.PI*3/2, Vec.of(0, 1, 0))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_RT"] || this.plastic);
-
-        //sky_back
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(0,30, -size))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_BK"] || this.plastic);
-
-        //sky_front
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(0,30,size))).
-                    times(Mat4.rotation(Math.PI, Vec.of(0, 1, 0))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_FR"] || this.plastic);
-
-        // testfloor
 
         this.lights[0].renderOutputBuffer(graphics_state, () => {
             this.shapes["square"].draw(
                     graphics_state,
-                    m.times(Mat4.rotation(-Math.PI/2, Vec.of(1, 0, 0)))
-                    .times(Mat4.scale(Vec.of(size,size, 1))),
+                    m.times(Mat4.scale(Vec.of(200, 200, 200))
+                     .times(Mat4.translation(Vec.of(0,0.0,-0.1)))
+                     .times(Mat4.rotation(-Math.PI/2, Vec.of(1, 0, 0)))),
                     this.floor);
         });
-
    }
+
+    draw_skybox(graphics_state, gl) {
+        this.skybox.renderSkybox(gl, () => {
+           let m = Mat4.identity();
+           this.shapes['box'].draw(
+                graphics_state,
+                m.times(Mat4.scale(Vec.of(200, 200, 200))
+                 .times(Mat4.translation(Vec.of(1,0.15,-1.1)))
+                 .times(Mat4.rotation(Math.PI, Vec.of(0, 0, 1)))
+                 .times(Mat4.rotation(-Math.PI, Vec.of(0, 1, 0)))),
+                this.skybox_shader
+           )
+        });
+
+        this.draw_floor(graphics_state);
+
+    }
 
     draw_cow(graphics_state, m, depth_test) {
         this.lights[0].renderOutputBuffer(graphics_state, () => {
@@ -272,7 +242,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
     display(graphics_state) {
         // Use the lights stored in this.lights.
         graphics_state.lights = this.lights;
-                
+        
+        
         // Find how much time has passed in seconds, and use that to place shapes.
         if (!this.paused)
             this.t += graphics_state.animation_delta_time / 1000;
@@ -283,7 +254,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.renderShadowmap(graphics_state);
 
         // skybox
-        this.draw_skybox(graphics_state);
+        this.draw_skybox(graphics_state, this.gl);
 
         //cow
         m = Mat4.identity()
