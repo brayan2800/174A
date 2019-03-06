@@ -36,7 +36,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
             'cone': new Cone(20),
             'ball': new Subdivision_Sphere(4),
             'torus': new Torus(10, 0.0001, 1000, 0),
-            'UFOBeam': new UFOBeam(4, 10, 300)
+            'UFOBeam': new UFOBeam(4, 10, 300),
+            'heart': new Heart()
         }
         this.submit_shapes(context, shapes);
         this.shape_count = Object.keys(shapes).length;
@@ -91,6 +92,11 @@ class Assignment_Two_Skeleton extends Scene_Component {
             specularity: 0,
             ambient: 1.0,
             texture: context.get_instance("assets/cow2.png", false)
+        });
+
+        this.heart = context.get_instance(Shadow_Phong_Shader).material(Color.of(1, 0, 0, 1), {
+            specularity: 0,
+            ambient: 1.0
         });
 
         this.shadowmap = context.get_instance(Shadow_Shader).material();
@@ -211,6 +217,14 @@ class Assignment_Two_Skeleton extends Scene_Component {
                     graphics_state,
                     m.times(Mat4.scale(Vec.of(3.0, 3.0, 9.0))),
                     (depth_test ? this.shadowmap : this.cow));
+        })
+        
+        this.lights[0].renderOutputBuffer(graphics_state, () => {
+            this.shapes["heart"].draw(
+                graphics_state,
+                m.times(Mat4.translation(Vec.of(5.0, 5.0, 5.0))),
+                (depth_test ? this.shadowmap: this.heart)
+            );
         })
     }
 
