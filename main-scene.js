@@ -82,7 +82,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
            texture: context.get_instance("assets/hills_bk.png", false)
         });
 
-        this.floor = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
+        this.floor = context.get_instance(Perlin_Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
            specularity: 0,
            ambient: 1.0,
            texture: context.get_instance("assets/test_floor.png", false)
