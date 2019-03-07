@@ -94,9 +94,10 @@ class Assignment_Two_Skeleton extends Scene_Component {
             texture: context.get_instance("assets/cow2.png", false)
         });
 
-        this.heart = context.get_instance(Shadow_Phong_Shader).material(Color.of(1, 0, 0, 1), {
+        this.heart = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
             specularity: 0,
-            ambient: 1.0
+            ambient: 1.0,
+            texture: context.get_instance("assets/heart.png", false)
         });
 
         this.shadowmap = context.get_instance(Shadow_Shader).material();
