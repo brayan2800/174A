@@ -75,6 +75,12 @@ class Assignment_Two_Skeleton extends Scene_Component {
             ambient: 1.0,
             diffusivity: .4
         });
+
+        this.pink = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
+            specularity: 0,
+            ambient: 1.0,
+            texture: context.get_instance("assets/pink.png", false)
+        });
         
         this.sky_lf = context.get_instance(Phong_Shader).material(Color.of(0, 0, 0, 1), {
            specularity: 0,
@@ -91,7 +97,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.cow = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
             specularity: 0,
             ambient: 1.0,
-            texture: context.get_instance("assets/cow2.png", false)
+            texture: context.get_instance("assets/cow.png", false)
         });
 
         this.shadowmap = context.get_instance(Shadow_Shader).material();
@@ -101,7 +107,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
         // Load some textures for the demo shapes
         this.shape_materials = {};
         const shape_textures = {
-            ball: "assets/cow2.png"
+            ball: "assets/cow.png",
+            cylinder: "assets/cow.png" //?
         };
         
         for (let t in shape_textures)
@@ -133,8 +140,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
         
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(200, 10, -200)));  
-            this.draw_cow(graphics_state, m, true);
+            m = m.times(Mat4.translation(Vec.of(200, 5, -200)));  
+            this.draw_cow(graphics_state, m, .5, true);
         });
         
         this.lights[0].renderDepthBuffer(graphics_state, () => {
@@ -175,14 +182,119 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
     }
 
-    draw_cow(graphics_state, m, depth_test) {
+    draw_cow(graphics_state, m, scale, depth_test) {
         this.lights[0].renderOutputBuffer(graphics_state, () => {
-            this.shapes["ball"].draw(
-                    graphics_state,
-                    m.times(Mat4.scale(Vec.of(3.0, 3.0, 9.0))),
-                    (depth_test ? this.shadowmap : this.cow));
+            this.draw_cow_body(graphics_state, m, scale, depth_test);
+            this.draw_all_legs(graphics_state, m, scale, depth_test);
+            this.draw_cow_tail(graphics_state, m, scale, depth_test);
+            this.draw_cow_head(graphics_state, m, scale, depth_test);
         })
     }
+
+    draw_cow_body(graphics_state, m, scale, depth_test) {   
+        this.shapes["cylinder"].draw(
+            graphics_state,m
+            .times(Mat4.rotation(Math.PI / 2, Vec.of(0, 1, 0)))
+            .times(Mat4.scale(4 * scale)),
+            (depth_test ? this.shadowmap : this.cow));
+        this.shapes["ball"].draw(
+            graphics_state,m
+            .times(Mat4.translation(Vec.of( scale * -4, 0, 0)))
+            .times(Mat4.scale(Vec.of( scale * 3,  scale * 4,  scale * 4))),
+            (depth_test ? this.shadowmap : this.cow));
+        this.shapes["ball"].draw(
+            graphics_state,m
+            .times(Mat4.translation(Vec.of( scale * 4, 0, 0)))
+            .times(Mat4.scale(Vec.of( scale * 3,  scale * 4,  scale * 4))),
+            (depth_test ? this.shadowmap : this.cow));  
+    }
+
+    draw_all_legs(graphics_state, m, scale, depth_test){  //draw the four legs
+        this.draw_cow_leg(graphics_state, m, 1, 1, scale, depth_test); 
+        this.draw_cow_leg(graphics_state, m, -1, 1, scale, depth_test);
+        this.draw_cow_leg(graphics_state, m, 1, -1, scale, depth_test);
+        this.draw_cow_leg(graphics_state, m, -1, -1, scale, depth_test);
+    }
+
+    draw_cow_leg(graphics_state, m, side, fb, scale, depth_test) {
+        m = m.times(
+        Mat4.translation(Vec.of(scale * fb * -4.3, scale * -Math.sqrt(8), scale * side * Math.sqrt(8)))); 
+        this.shapes["ball"].draw( 
+            graphics_state,m
+            .times(Mat4.scale(scale * 1.3)),
+            (depth_test ? this.shadowmap : this.cow));
+        this.shapes["cylinder"].draw( 
+            graphics_state,m
+            .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)))
+            .times(Mat4.translation(Vec.of(0, 0, scale * 5.5)))
+            .times(Mat4.scale(Vec.of( scale * 1.3,  scale * 1.3,  scale * 5))),
+            (depth_test ? this.shadowmap : this.cow));
+    }
+
+   draw_cow_tail(graphics_state, m, scale, depth_test) {
+        const degree = Math.sin(this.t);
+        let sign = Math.sign(degree);
+        m = m.times(Mat4.translation(Vec.of(scale * 4, 0, 0))) 
+            .times(Mat4.rotation(-2*Math.PI / 4 , Vec.of(0, 0, 1))) 
+            .times(Mat4.translation(Vec.of(scale * -1, scale * (0.15 + Math.sqrt(25 / 2) -.5), 0))); 
+        this.shapes["box"].draw(  
+            graphics_state,m.times(Mat4.scale(scale * 0.3)),
+            (depth_test ? this.shadowmap : this.cow));
+        for (let i = 0; i < 10; i++) {
+            if (i < 3) {
+                m = m.times(Mat4.translation(Vec.of(scale * 0.3, scale * 0.3, scale * sign * 0.3))) 
+                .times(Mat4.rotation((-4 * (Math.PI / 4)) / 9, Vec.of(0, 0, 1))) 
+                .times(Mat4.rotation(0.1 * degree, Vec.of(1, 0, 0))) 
+                .times(Mat4.translation(Vec.of(scale * -0.3, scale * 0.3, scale * sign * -0.3))); 
+             } 
+            else {
+                m = m.times(Mat4.translation(Vec.of(0, scale * 0.3, scale * sign * 0.3)))
+                .times(Mat4.rotation(0.1 * degree, Vec.of(1, 0, 0)))
+                .times(Mat4.translation(Vec.of(0, scale * 0.3, scale * sign * -0.3)));
+            }
+            if(i == 9){
+                this.shapes["ball"].draw(
+                graphics_state,m.times(Mat4.scale(scale * 0.6)),
+                (depth_test ? this.shadowmap : this.cow));
+            }
+            else {
+                this.shapes["box"].draw(
+                graphics_state,m.times(Mat4.scale(scale * 0.3)),
+                (depth_test ? this.shadowmap : this.cow));
+            }
+        }
+  }
+
+  draw_cow_head(graphics_state, m, scale, depth_test) {
+    m = m.times(Mat4.rotation(-Math.PI / 2, Vec.of(0, 1, 0)))
+        .times(Mat4.translation(Vec.of(0, 0, scale * 4)))
+        .times(Mat4.rotation(-Math.PI / 4, Vec.of(1, 0, 0)))
+        .times(Mat4.translation(Vec.of(0, 0, scale * Math.sqrt(25 / 2) -.2)));
+    m = m.times(Mat4.translation(Vec.of(0, scale * -0.8, scale * 2.2)));
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.scale(Vec.of(scale * 2, scale * 3.5, scale * 2))),
+        (depth_test ? this.shadowmap : this.cow)); //head
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.translation(Vec.of( 0, -2, 0)))
+        .times(Mat4.scale(Vec.of( scale * 2,  scale * .5,  scale * 2))),
+        (depth_test ? this.shadowmap : this.pink));  //nose
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.rotation((-Math.PI/7) , Vec.of(0,  1, 0)))
+        .times(Mat4.scale(Vec.of(scale * 1.7, scale * 0.8, scale * 0.3)))
+        .times(Mat4.translation(Vec.of(-1.9, scale * 5, 7)))
+        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0))),
+        (depth_test ? this.shadowmap : this.cow)); //ear
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.rotation((Math.PI/7) , Vec.of(0,  1, 0)))
+        .times(Mat4.scale(Vec.of(scale * 1.7, scale * 0.8, scale * 0.3)))
+        .times(Mat4.translation(Vec.of(1.9, scale * 5, 7 )))
+        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0))),
+        (depth_test ? this.shadowmap : this.cow));  //ear
+  }
 
     draw_ufo(graphics_state, m, depth_test) {
 
@@ -332,8 +444,12 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         //cow
         m = Mat4.identity();
-        m = m.times(Mat4.translation(Vec.of(200, 10, -200)));
-        this.draw_cow(graphics_state, m, false);
+        m = m.times(Mat4.translation(Vec.of(200, 5, -200)));
+        this.draw_cow(graphics_state, m, .5, false);
+        m = m.times(Mat4.translation(Vec.of(20, 0, 20)));
+        this.draw_cow(graphics_state, m, .5, false);
+        m = m.times(Mat4.translation(Vec.of(-40, 0, -65)));
+        this.draw_cow(graphics_state, m, .5, false);
 
         // ufo
         m = this.get_ufo_matrix(t);
