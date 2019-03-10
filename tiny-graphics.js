@@ -1102,6 +1102,65 @@ class Canvas_Widget {
     }
 }
 
+class Skybox {
+    constructor(gl, images) {
+        this.gl = gl;
+
+        this.texture_id = this.load_texture_cube(gl, images);
+
+    }
+
+    load_texture_cube(gl, urls) {
+        var texture_id = 0;
+
+        var load_count = 0;
+        var skybox_images = new Array(6);
+
+        for (var i = 0; i < 6; i++) {
+            skybox_images[i] = new Image();
+            skybox_images[i].onload = function () {
+                load_count++;
+
+                // Check if we have loaded all the images
+                if (load_count == 6) {
+                    texture_id = gl.createTexture();
+                    
+                    // Creating the cube map
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture_id);
+                    
+                    // Different targets for the cube map
+                    var sides = [
+                        gl.TEXTURE_CUBE_MAP_POSITIVE_X, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 
+                        gl.TEXTURE_CUBE_MAP_POSITIVE_Y, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 
+                        gl.TEXTURE_CUBE_MAP_POSITIVE_Z, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z 
+                    ];
+
+                    // Upload the image data from each image to each texture in the cube map
+                    for (var j = 0; j < 6; j++) {
+                        gl.texImage2D(sides[j], 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, skybox_images[j]);
+                        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    }
+
+                    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+                }
+            }
+            skybox_images[i].src = urls[i];
+
+        }
+
+        return texture_id;
+    }
+
+    renderSkybox(gl, draw_fun) {
+        gl.clearColor(0, 0, 0, 1);
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        draw_fun();
+    }
+
+}
 
 window.Vec = window.tiny_graphics.Vec = Vec;
 window.Mat = window.tiny_graphics.Mat = Mat;

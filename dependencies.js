@@ -572,9 +572,9 @@ window.Shadow_Phong_Shader = window.classes.Shadow_Phong_Shader =
             {
                 gpu.shader_attributes["tex_coord"].enabled = true;
                 gl.uniform1f(gpu.USE_TEXTURE_loc, 1);
-                gl.activeTexture(gl.TEXTURE1)
+                gl.activeTexture(gl.TEXTURE1);
                 gl.bindTexture(gl.TEXTURE_2D, material.texture.id);
-                gl.activeTexture(gl.TEXTURE0)
+                gl.activeTexture(gl.TEXTURE0);
             }
             else {
                 gl.uniform1f(gpu.USE_TEXTURE_loc, 0);
@@ -716,6 +716,94 @@ class Shadow_Shader extends Shader {
 			}
 		`;
 	}
+}
+
+class Skybox_Shader extends Shader {
+	constructor (gl) {
+		super(gl);
+	}
+
+	material() {
+		return {
+			shader: this
+		};
+	}
+
+	map_attribute_name_to_buffer_name(name) {
+		return {
+			object_space_pos: "positions",
+			color: "colors"
+		}[name];
+	}
+
+	update_GPU(g_state, model_transform, material, gpu = this.g_addrs, gl = this.gl) {
+		let [P,C,M] = [g_state.projection_transform, g_state.camera_transform, model_transform],
+            CM = C.times(M),
+            PCM = P.times(CM);
+
+		gl.uniformMatrix4fv(gpu.model_transform_loc, false, Mat.flatten_2D_to_1D(M.transposed()));
+		gl.uniformMatrix4fv(gpu.camera_transform_loc, false, Mat.flatten_2D_to_1D(C.transposed()));
+		gl.uniformMatrix4fv(gpu.projection_transform_loc, false, Mat.flatten_2D_to_1D(P.transposed()));
+		gl.uniformMatrix4fv(gpu.projection_camera_model_transform_loc, false, Mat.flatten_2D_to_1D(PCM.transposed()));
+		gl.uniformMatrix4fv(gpu.camera_model_transform_loc, false, Mat.flatten_2D_to_1D(CM.transposed()));
+
+		var lightTransforms_flattened = []
+		for (var i = 0 ; i < g_state.lights.length; i++) {
+			lightTransforms_flattened = Mat.flatten_2D_to_1D(g_state.lights[i].transform.transposed())
+		}
+
+		var lightColors_flattened = []
+		for (var i = 0; i < 4 * g_state.lights.length; i++) {
+			lightColors_flattened.push(g_state.lights[Math.floor(i / 4)].color[i % 4]);
+		}
+
+		gl.uniformMatrix4fv(gpu.light_transform_loc, false, lightTransforms_flattened);
+		gl.uniform4fv(gpu.light_color_loc, lightColors_flattened);
+
+	}
+
+	shared_glsl_code() {
+		return `
+		    precision mediump float;
+
+			uniform float red;
+			const int N_LIGHTS = 1;
+			uniform vec4 lightPosition[N_LIGHTS], lightColor[N_LIGHTS];
+
+			varying vec3 vCoords;
+		`;
+	}
+
+	vertex_glsl_code() {
+		return `
+			attribute vec3 object_space_pos;
+
+			
+			uniform mat4 projection_camera_model_transform;
+			uniform mat4 projection_transform;
+			uniform mat4 model_transform;
+			uniform mat4 camera_transform;
+			uniform mat4 camera_model_transform;
+			uniform mat4 light_transform[N_LIGHTS];
+
+			void main() {
+				vec4 eyeCoords = camera_model_transform * vec4(object_space_pos, 1.0);
+				gl_Position = projection_transform * eyeCoords;
+				vCoords = object_space_pos;
+			}
+		`;
+	}
+
+	fragment_glsl_code() {
+		return `
+			uniform samplerCube skybox;
+
+			void main() {				
+				gl_FragColor = textureCube(skybox, vCoords);
+			}
+		`;
+	}
+
 }
 
 // Perlin Shadow Phong Shader

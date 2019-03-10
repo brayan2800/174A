@@ -4,6 +4,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         super(context, control_box);
         
         const gl = context.gl;
+        this.gl = gl;
 
         // First, include a secondary Scene that provides movement controls:
         if(!context.globals.has_controls)
@@ -75,6 +76,12 @@ class Assignment_Two_Skeleton extends Scene_Component {
             ambient: 1.0,
             diffusivity: .4
         });
+
+        this.pink = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
+            specularity: 0,
+            ambient: 1.0,
+            texture: context.get_instance("assets/pink.png", false)
+        });
         
         this.sky_lf = context.get_instance(Phong_Shader).material(Color.of(0, 0, 0, 1), {
            specularity: 0,
@@ -91,7 +98,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.cow = context.get_instance(Shadow_Phong_Shader).material(Color.of(0, 0, 0, 1), {
             specularity: 0,
             ambient: 1.0,
-            texture: context.get_instance("assets/cow2.png", false)
+            texture: context.get_instance("assets/cow.png", false)
         });
 
         this.heart = context.get_instance(Flat_Shader).material(Color.of(0, 0, 0, 1), {
@@ -103,18 +110,15 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         this.shadowmap = context.get_instance(Shadow_Shader).material();
 
+        this.skybox_shader = context.get_instance(Skybox_Shader).material();
+
         // Load some textures for the demo shapes
         this.shape_materials = {};
         const shape_textures = {
-            ball: "assets/cow2.png",
-            square: "assets/grass2.png",
-            square_sky: "assets/hills_up.png",
-            square_LF: "assets/hills_lf.png",
-            square_RT: "assets/hills_rt.png",
-            square_BK: "assets/hills_bk.png",
-            square_FR: "assets/hills_ft.png",
-            testfloor: "assets/test_floor.png"
+            ball: "assets/cow.png",
+            cylinder: "assets/cow.png" //?
         };
+        
         for (let t in shape_textures)
             this.shape_materials[t] = this.texture_base.override({
                 texture: context.get_instance(shape_textures[t])
@@ -174,9 +178,16 @@ class Assignment_Two_Skeleton extends Scene_Component {
                                           Vec.of(210, 230.0, -200, 1), // Position of the light
                                           Color.of(1.0, 1.0, 1.0, 0.7), 70000)];
 
-                              
-        this.t = 0;
+        this.skybox = new Skybox(gl, ["assets/hills_rt.png",
+                                      "assets/hills_lf.png",
+                                      "assets/test_floor.png",
+                                      "assets/hills_up.png",
+                                      "assets/hills_bk.png",
+                                      "assets/hills_ft.png"]);
 
+
+        this.t = 0;
+        this.draw_beam = false;
         
     }
     
@@ -185,80 +196,29 @@ class Assignment_Two_Skeleton extends Scene_Component {
         
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(200, 10, -200)));  
-            this.draw_cow(graphics_state, m, true);
+            m = m.times(Mat4.translation(Vec.of(200, 5, -200)));  
+            this.draw_cow(graphics_state, m, .5, true);
         });
         
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(180 + 20*Math.sin(0.2*(this.t)), 30, -200)));
-            this.draw_ufo(graphics_state, m, true);
+            m = this.get_ufo_matrix(t);
+            this.draw_ufo(graphics_state, m, true, false);
         });
     }
-    
-    draw_skybox(graphics_state)
-   {
-        /* sides: 400 x 400 
-           floor: spans [(0,0,0), (400, 0, -400)] 
-           
-           Sides are shifted down to make floor-side transitions smoother
-           range inside skybox: [(0,0,0), (400, 230, -400)]
-        */
 
+   draw_floor(graphics_state) {
         let m = Mat4.identity().times(Mat4.translation(Vec.of(200, 0 ,-200)));
         const size = 200; 
-
-        //sky_up
-        //m = Mat4.identity();
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(0, size+30 ,0))).
-                    times(Mat4.rotation(Math.PI/2, Vec.of(1, 0, 0))).
-                    times(Mat4.rotation(Math.PI/2, Vec.of(0, 0, 1))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_sky"] || this.plastic);
-
-        //sky_Left
-        this.shapes["square"].draw(
-                     graphics_state,
-                     m.times(Mat4.translation(Vec.of(-size, 30, 0))).
-                     times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).
-                     times(Mat4.scale(Vec.of(size,size, 1))),
-                     this.shape_materials["square_LF"] || this.plastic);
-
-        //sky_right
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(size,30,0))).
-                    times(Mat4.rotation(Math.PI*3/2, Vec.of(0, 1, 0))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_RT"] || this.plastic);
-
-        //sky_back
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(0,30, -size))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_BK"] || this.plastic);
-
-        //sky_front
-        this.shapes["square"].draw(
-                    graphics_state,
-                    m.times(Mat4.translation(Vec.of(0,30,size))).
-                    times(Mat4.rotation(Math.PI, Vec.of(0, 1, 0))).
-                    times(Mat4.scale(Vec.of(size,size, 1))),
-                    this.shape_materials["square_FR"] || this.plastic);
-
-        // testfloor
 
         this.lights[0].renderOutputBuffer(graphics_state, () => {
             this.shapes["square"].draw(
                     graphics_state,
-                    m.times(Mat4.rotation(-Math.PI/2, Vec.of(1, 0, 0)))
-                    .times(Mat4.scale(Vec.of(size,size, 1))),
+                    m.times(Mat4.scale(Vec.of(200, 200, 200))
+                     .times(Mat4.translation(Vec.of(0,0.0,-0.1)))
+                     .times(Mat4.rotation(-Math.PI/2, Vec.of(1, 0, 0)))),
                     this.floor);
         });
-
    }
 
    draw_particle_effects(graphics_state, m, depth_test) {
@@ -289,16 +249,138 @@ class Assignment_Two_Skeleton extends Scene_Component {
         })
     }
 
-    draw_cow(graphics_state, m, depth_test) {
+    draw_skybox(graphics_state, gl) {
+        this.skybox.renderSkybox(gl, () => {
+           let m = Mat4.identity();
+           this.shapes['box'].draw(
+                graphics_state,
+                m.times(Mat4.scale(Vec.of(200, 200, 200))
+                 .times(Mat4.translation(Vec.of(1,0.15,-1.1)))
+                 .times(Mat4.rotation(Math.PI, Vec.of(0, 0, 1)))
+                 .times(Mat4.rotation(-Math.PI, Vec.of(0, 1, 0)))),
+                this.skybox_shader
+           )
+        });
+
+        this.draw_floor(graphics_state);
+
+    }
+
+    draw_cow(graphics_state, m, scale, depth_test) {
         this.lights[0].renderOutputBuffer(graphics_state, () => {
-            this.shapes["ball"].draw(
-                    graphics_state,
-                    m.times(Mat4.scale(Vec.of(3.0, 3.0, 9.0))),
-                    (depth_test ? this.shadowmap : this.cow));
+            this.draw_cow_body(graphics_state, m, scale, depth_test);
+            this.draw_all_legs(graphics_state, m, scale, depth_test);
+            this.draw_cow_tail(graphics_state, m, scale, depth_test);
+            this.draw_cow_head(graphics_state, m, scale, depth_test);
         })
         
         this.draw_particle_effects(graphics_state, m, depth_test);
     }
+
+    draw_cow_body(graphics_state, m, scale, depth_test) {   
+        this.shapes["cylinder"].draw(
+            graphics_state,m
+            .times(Mat4.rotation(Math.PI / 2, Vec.of(0, 1, 0)))
+            .times(Mat4.scale(4 * scale)),
+            (depth_test ? this.shadowmap : this.cow));
+        this.shapes["ball"].draw(
+            graphics_state,m
+            .times(Mat4.translation(Vec.of( scale * -4, 0, 0)))
+            .times(Mat4.scale(Vec.of( scale * 3,  scale * 4,  scale * 4))),
+            (depth_test ? this.shadowmap : this.cow));
+        this.shapes["ball"].draw(
+            graphics_state,m
+            .times(Mat4.translation(Vec.of( scale * 4, 0, 0)))
+            .times(Mat4.scale(Vec.of( scale * 3,  scale * 4,  scale * 4))),
+            (depth_test ? this.shadowmap : this.cow));  
+    }
+
+    draw_all_legs(graphics_state, m, scale, depth_test){  //draw the four legs
+        this.draw_cow_leg(graphics_state, m, 1, 1, scale, depth_test); 
+        this.draw_cow_leg(graphics_state, m, -1, 1, scale, depth_test);
+        this.draw_cow_leg(graphics_state, m, 1, -1, scale, depth_test);
+        this.draw_cow_leg(graphics_state, m, -1, -1, scale, depth_test);
+    }
+
+    draw_cow_leg(graphics_state, m, side, fb, scale, depth_test) {
+        m = m.times(
+        Mat4.translation(Vec.of(scale * fb * -4.3, scale * -Math.sqrt(8), scale * side * Math.sqrt(8)))); 
+        this.shapes["ball"].draw( 
+            graphics_state,m
+            .times(Mat4.scale(scale * 1.3)),
+            (depth_test ? this.shadowmap : this.cow));
+        this.shapes["cylinder"].draw( 
+            graphics_state,m
+            .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)))
+            .times(Mat4.translation(Vec.of(0, 0, scale * 5.5)))
+            .times(Mat4.scale(Vec.of( scale * 1.3,  scale * 1.3,  scale * 5))),
+            (depth_test ? this.shadowmap : this.cow));
+    }
+
+   draw_cow_tail(graphics_state, m, scale, depth_test) {
+        const degree = Math.sin(this.t);
+        let sign = Math.sign(degree);
+        m = m.times(Mat4.translation(Vec.of(scale * 4, 0, 0))) 
+            .times(Mat4.rotation(-2*Math.PI / 4 , Vec.of(0, 0, 1))) 
+            .times(Mat4.translation(Vec.of(scale * -1, scale * (0.15 + Math.sqrt(25 / 2) -.5), 0))); 
+        this.shapes["box"].draw(  
+            graphics_state,m.times(Mat4.scale(scale * 0.3)),
+            (depth_test ? this.shadowmap : this.cow));
+        for (let i = 0; i < 10; i++) {
+            if (i < 3) {
+                m = m.times(Mat4.translation(Vec.of(scale * 0.3, scale * 0.3, scale * sign * 0.3))) 
+                .times(Mat4.rotation((-4 * (Math.PI / 4)) / 9, Vec.of(0, 0, 1))) 
+                .times(Mat4.rotation(0.1 * degree, Vec.of(1, 0, 0))) 
+                .times(Mat4.translation(Vec.of(scale * -0.3, scale * 0.3, scale * sign * -0.3))); 
+             } 
+            else {
+                m = m.times(Mat4.translation(Vec.of(0, scale * 0.3, scale * sign * 0.3)))
+                .times(Mat4.rotation(0.1 * degree, Vec.of(1, 0, 0)))
+                .times(Mat4.translation(Vec.of(0, scale * 0.3, scale * sign * -0.3)));
+            }
+            if(i == 9){
+                this.shapes["ball"].draw(
+                graphics_state,m.times(Mat4.scale(scale * 0.6)),
+                (depth_test ? this.shadowmap : this.cow));
+            }
+            else {
+                this.shapes["box"].draw(
+                graphics_state,m.times(Mat4.scale(scale * 0.3)),
+                (depth_test ? this.shadowmap : this.cow));
+            }
+        }
+  }
+
+  draw_cow_head(graphics_state, m, scale, depth_test) {
+    m = m.times(Mat4.rotation(-Math.PI / 2, Vec.of(0, 1, 0)))
+        .times(Mat4.translation(Vec.of(0, 0, scale * 4)))
+        .times(Mat4.rotation(-Math.PI / 4, Vec.of(1, 0, 0)))
+        .times(Mat4.translation(Vec.of(0, 0, scale * Math.sqrt(25 / 2) -.2)));
+    m = m.times(Mat4.translation(Vec.of(0, scale * -0.8, scale * 2.2)));
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.scale(Vec.of(scale * 2, scale * 3.5, scale * 2))),
+        (depth_test ? this.shadowmap : this.cow)); //head
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.translation(Vec.of( 0, -2, 0)))
+        .times(Mat4.scale(Vec.of( scale * 2,  scale * .5,  scale * 2))),
+        (depth_test ? this.shadowmap : this.pink));  //nose
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.rotation((-Math.PI/7) , Vec.of(0,  1, 0)))
+        .times(Mat4.scale(Vec.of(scale * 1.7, scale * 0.8, scale * 0.3)))
+        .times(Mat4.translation(Vec.of(-1.9, scale * 5, 7)))
+        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0))),
+        (depth_test ? this.shadowmap : this.cow)); //ear
+    this.shapes["box"].draw(
+        graphics_state,m
+        .times(Mat4.rotation((Math.PI/7) , Vec.of(0,  1, 0)))
+        .times(Mat4.scale(Vec.of(scale * 1.7, scale * 0.8, scale * 0.3)))
+        .times(Mat4.translation(Vec.of(1.9, scale * 5, 7 )))
+        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0))),
+        (depth_test ? this.shadowmap : this.cow));  //ear
+  }
 
     draw_ufo(graphics_state, m, depth_test) {
 
@@ -332,11 +414,13 @@ class Assignment_Two_Skeleton extends Scene_Component {
              times(Mat4.translation(Vec.of(0, 0.12, 0))),
            (depth_test ? this.shadowmap : this.ufo_bottom));
         
-        if (!depth_test) {
+        if (this.draw_beam) {
             // Drawing the beam
             // Makes the beam extend and retract from the UFO
             // Size goes from 0.2 to 3.0
-            let beam_size = 1.4*Math.sin(0.5*(this.t)) + 1.6;
+            let scale_constant = -1*Math.PI/7;
+            let beam_size =  (this.t >= 28.15 && this.t <= 35.15) ? -1.4*Math.sin(scale_constant*(this.t) + Math.PI/2) + 1.6 : 
+            (this.t  >= 45.65 && this.t <= 49.15) ? -3.0*Math.sin((scale_constant*(this.t)*2) + Math.PI/2) + 3.0 : 3.0;
 
             this.shapes["UFOBeam"].draw(
                 graphics_state,
@@ -354,11 +438,99 @@ class Assignment_Two_Skeleton extends Scene_Component {
         });
     }
 
+    //Will determine the position & movement of the UFO based on time value t
+    get_ufo_matrix(t) {
+        let scale_constant, x_scale, y_scale, z_scale, x_angle, y_angle, z_angle;
+        let x_motion, y_motion, z_motion;
+        
+        scale_constant = -1*Math.PI/7; //allows sin to operate over 7 seconds
+
+        let ufo_matrix = Mat4.identity();
+        if (t >=0 && t < 7) {
+            this.draw_beam = false;
+            //do nothing, UFO isn't in shot rn
+        }
+        else if (t >= 7 && t <= 14) {
+            this.draw_beam = false;
+            x_scale = (Math.sin((t*scale_constant) + Math.PI/2) + 1)/2;
+            y_scale = (Math.sin((t*scale_constant) + Math.PI/2) + 1)/2;
+            z_scale = (Math.sin((t*scale_constant) + Math.PI/2) + 1)/2;
+
+            x_motion = 175 + 5*((Math.sin((8*t*scale_constant) + Math.PI/2)+1)/2);
+            y_motion = 43 + -13*((Math.sin((t*scale_constant) + Math.PI/2)+1)/2);
+            z_motion = -311 + 91*((Math.sin((t*scale_constant) + Math.PI/2)+1)/2);
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(x_motion, y_motion, z_motion)));
+            ufo_matrix = ufo_matrix.times(Mat4.scale(Vec.of(x_scale,y_scale,z_scale)));
+        }
+        else if (t > 14 && t <= 21) {
+            this.draw_beam = false;
+            x_motion = -30*Math.cos((4*t*scale_constant));
+            y_motion = -4*Math.sin((8*t*scale_constant));
+            z_motion = -30*Math.sin((4*t*scale_constant));
+            y_angle = 2*Math.PI*((Math.sin(t*scale_constant - Math.PI/2)+1)/2);
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(x_motion, y_motion, z_motion)));
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(210,30,-220)));
+            ufo_matrix = ufo_matrix.times(Mat4.rotation(y_angle, Vec.of(0,1,0)));
+        }
+        else if (t > 21 && t <= 21.15) {
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(180,30,-220)));
+            //just a .15 second block for smooth animation transition
+            this.draw_beam = false;
+        }
+        else if (t > 21.15 && t <= 28.15) {
+            this.draw_beam = false;
+            y_angle = 24*Math.PI*((Math.sin(((t - 0.15)*scale_constant) - Math.PI/2)+1)/2);
+            x_angle = 1/4*Math.PI*((Math.sin(((t - 0.15)*scale_constant))));
+
+            y_motion = 30 + 3*((Math.sin(((t - 0.15)*scale_constant*4))));
+            x_motion = 180 + 20*((Math.sin(((t - 0.15)*scale_constant) + Math.PI/2)+1)/2);
+            z_motion = -220 + 20*((Math.sin(((t - 0.15)*scale_constant) + Math.PI/2)+1)/2);
+
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
+
+            ufo_matrix = ufo_matrix.times(Mat4.rotation(y_angle, Vec.of(0, 1, 0)));
+            ufo_matrix = ufo_matrix.times(Mat4.rotation(x_angle, Vec.of(1, 0, 0)));
+        }
+        else if (t > 28.15 && t <= 35.15) {
+            this.draw_beam = true;
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(200, 30, -200)));
+        }
+        else if (t > 35.15 && t<= 38.65) {
+            this.draw_beam = true;
+            y_motion = 30 + -3*((Math.sin(((t - 0.15)*scale_constant) + Math.PI)));
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(200, y_motion, -200)));
+        }
+        else if ( t > 38.65 && t <= 42.15) {
+            this.draw_beam = true;
+            x_motion = 200 - 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            y_motion = 33;
+            z_motion = -200 + 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
+        }
+        else if (t > 42.15 && t <= 45.65) {
+            y_motion = 33 - 3*((Math.sin(((t - 3.65)*scale_constant)+ Math.PI/2)+1)/2);
+            this.draw_beam = true;
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
+        }
+        else if (t > 45.65 && t <= 52.65) {
+            y_motion = 70 + -40*((Math.sin(((t - 0.15)*scale_constant)+ Math.PI)));
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
+            if (t > 49.15) this.draw_beam = false;
+        }
+        else {
+            this.t = 0; //reset to 0 to start over animation
+            this.draw_beam = false;
+        }
+        return ufo_matrix;
+
+    }
+
 
     display(graphics_state) {
         // Use the lights stored in this.lights.
         graphics_state.lights = this.lights;
-                
+        
+        
         // Find how much time has passed in seconds, and use that to place shapes.
         if (!this.paused)
             this.t += graphics_state.animation_delta_time / 1000;
@@ -366,23 +538,22 @@ class Assignment_Two_Skeleton extends Scene_Component {
         
         let m = Mat4.identity();
 
-        this.renderShadowmap(graphics_state);
+        this.renderShadowmap(graphics_state, t);
 
         // skybox
-        this.draw_skybox(graphics_state);
+        this.draw_skybox(graphics_state, this.gl);
 
         //cow
-        m = Mat4.identity()
-        m = m.times(Mat4.translation(Vec.of(200, 10, -200)));
-        this.draw_cow(graphics_state, m, false);
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(200, 5, -200)));
+        this.draw_cow(graphics_state, m, .5, false);
+        m = m.times(Mat4.translation(Vec.of(20, 0, 20)));
+        this.draw_cow(graphics_state, m, .5, false);
+        m = m.times(Mat4.translation(Vec.of(-40, 0, -65)));
+        this.draw_cow(graphics_state, m, .5, false);
 
         // ufo
-        let x_motion = 180 + 20*Math.sin(0.2*(this.t));
-        let y_motion = 30 + 20*Math.sin(0.2*(this.t));
-        let z_motion = -220;
-
-        m = Mat4.identity();
-        m = m.times(Mat4.translation(Vec.of(x_motion, 30, -200)));
+        m = this.get_ufo_matrix(t);
         this.draw_ufo(graphics_state, m, false);
 
         this.lights[0].clearDepthBuffer();
