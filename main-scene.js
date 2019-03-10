@@ -126,15 +126,9 @@ class Assignment_Two_Skeleton extends Scene_Component {
             });
 
         // heart particle effect data
-<<<<<<< HEAD
-        this.numParticles = 1;
-        this.particleRadius = 10;
-        this.particleScale = 0.2;
-=======
         this.numParticles = 20;
         this.particleRadius = 5;
         this.particleScale = 0.75;
->>>>>>> afaddf06a73aa8b92c57d6f83c87f1c82caa9658
 
         this.lifetimes = [];
         this.offsets = [];
