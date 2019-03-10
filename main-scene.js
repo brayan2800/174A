@@ -126,9 +126,15 @@ class Assignment_Two_Skeleton extends Scene_Component {
             });
 
         // heart particle effect data
+<<<<<<< HEAD
         this.numParticles = 1;
         this.particleRadius = 10;
         this.particleScale = 0.2;
+=======
+        this.numParticles = 20;
+        this.particleRadius = 5;
+        this.particleScale = 0.75;
+>>>>>>> afaddf06a73aa8b92c57d6f83c87f1c82caa9658
 
         this.lifetimes = [];
         this.offsets = [];
@@ -198,10 +204,17 @@ class Assignment_Two_Skeleton extends Scene_Component {
     // All objects that must be rendered need to be rendered to the shadowmap
     renderShadowmap(graphics_state, t) {
         
+        //main cow shadow
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
-            m = m.times(Mat4.translation(Vec.of(200, 5, -200)));  
-            this.draw_cow(graphics_state, m, .5, true);
+            m = this.get_cow_matrix(t);  
+            this.draw_cow(graphics_state, m, .5, true, false);
+        });
+        //cows special friend
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(375, 5, -205)));
+            this.draw_cow(graphics_state, m, .5, true, false);
         });
         
         this.lights[0].renderDepthBuffer(graphics_state, () => {
@@ -231,9 +244,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
    }
 
    draw_particle_effects(graphics_state, m, depth_test) {
-        var base_location = m.times(Mat4.translation(Vec.of(0.0, 0.0, 10.0))).times(Mat4.scale(this.particleScale, this.particleScale, this.particleScale));
-        var numParticles = 300;
-        var radius = 0.5;
+        var base_location = m.times(Mat4.translation(Vec.of(-10.0, 5.0, 7.5))).times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).times(Mat4.scale(this.particleScale, this.particleScale, this.particleScale));
 
         for (var i = 0; i < this.numParticles; i++) {
             var starting_location = Vec.of(this.offsets[i * 3], this.offsets[i * 3 + 1], this.offsets[i * 3 + 2])
@@ -248,14 +259,6 @@ class Assignment_Two_Skeleton extends Scene_Component {
                 );
             })
         }
-
-        this.lights[0].renderOutputBuffer(graphics_state, () => {
-            this.shapes["heart"].draw(
-                graphics_state,
-                base_location,
-                (depth_test ? this.shadowmap: this.heart)
-            );
-        })
     }
 
     draw_skybox(graphics_state, gl) {
@@ -275,15 +278,16 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
     }
 
-    draw_cow(graphics_state, m, scale, depth_test) {
+    draw_cow(graphics_state, m, scale, depth_test, particle) {
         this.lights[0].renderOutputBuffer(graphics_state, () => {
             this.draw_cow_body(graphics_state, m, scale, depth_test);
             this.draw_all_legs(graphics_state, m, scale, depth_test);
             this.draw_cow_tail(graphics_state, m, scale, depth_test);
             this.draw_cow_head(graphics_state, m, scale, depth_test);
         })
-        
-        this.draw_particle_effects(graphics_state, m, depth_test);
+        if(particle && this.t >= 45.7){
+            this.draw_particle_effects(graphics_state, m, depth_test);
+        }
     }
 
     draw_cow_body(graphics_state, m, scale, depth_test) {   
@@ -321,7 +325,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.shapes["cylinder"].draw( 
             graphics_state,m
             .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)))
-            .times(Mat4.translation(Vec.of(0, 0, scale * 5.5)))
+            .times(Mat4.translation(Vec.of(0, 0, scale * 2)))
             .times(Mat4.scale(Vec.of( scale * 1.3,  scale * 1.3,  scale * 5))),
             (depth_test ? this.shadowmap : this.cow));
     }
@@ -390,6 +394,40 @@ class Assignment_Two_Skeleton extends Scene_Component {
         .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0))),
         (depth_test ? this.shadowmap : this.cow));  //ear
   }
+
+    get_cow_matrix(t) {
+        let scale_constant, x_scale, y_scale, z_scale, x_angle, y_angle, z_angle;
+        let x_motion, y_motion, z_motion;
+        
+        scale_constant = -1*Math.PI/7; //allows sin to operate over 7 seconds
+        let cow_matrix = Mat4.identity();
+
+        if (t <= 35.15) {   
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(200, 5, -200)));
+        }
+        else if (t > 35.15 && t<= 38.65) { //raise cow in beam (slow?)
+            y_motion = 5 + -3*((Math.sin(((t - 0.15)*scale_constant) + Math.PI ))); // start 0 fly up 3 
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(200, y_motion, -200)));
+        }
+        else if ( t > 38.65 && t <= 42.15) {  //move cow with spaceship and beam
+            x_motion = 200 - 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            y_motion = 8;
+            z_motion = -200 + 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
+        }
+        else if (t > 42.15 && t <= 45.65) {  
+            y_motion = 8 - 3*((Math.sin(((t - 3.65)*scale_constant)+ Math.PI/2)+1)/2);
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
+        }
+        else if (t > 45.65 && t <= 70) {     
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(375, 5, -220)));
+        }
+        else {
+            this.t = 0; //reset to 0 to start over animation
+        }
+        return cow_matrix;
+
+    }
 
     draw_ufo(graphics_state, m, depth_test) {
 
@@ -500,11 +538,11 @@ class Assignment_Two_Skeleton extends Scene_Component {
             ufo_matrix = ufo_matrix.times(Mat4.rotation(y_angle, Vec.of(0, 1, 0)));
             ufo_matrix = ufo_matrix.times(Mat4.rotation(x_angle, Vec.of(1, 0, 0)));
         }
-        else if (t > 28.15 && t <= 35.15) {
+        else if (t > 28.15 && t <= 35.15) {   
             this.draw_beam = true;
             ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(200, 30, -200)));
         }
-        else if (t > 35.15 && t<= 38.65) {
+        else if (t > 35.15 && t<= 38.65) { 
             this.draw_beam = true;
             y_motion = 30 + -3*((Math.sin(((t - 0.15)*scale_constant) + Math.PI)));
             ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(200, y_motion, -200)));
@@ -527,7 +565,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
             if (t > 49.15) this.draw_beam = false;
         }
         else {
-            this.t = 0; //reset to 0 to start over animation
+            //this.t = 0; //reset to 0 to start over animation
             this.draw_beam = false;
         }
         return ufo_matrix;
@@ -605,14 +643,16 @@ class Assignment_Two_Skeleton extends Scene_Component {
         // skybox
         this.draw_skybox(graphics_state, this.gl);
 
-        //cow
+        //cow that gets abducted
+        m = this.get_cow_matrix(t);
+        this.draw_cow(graphics_state, m, .5, false, true);
+
+        //cows special friend
         m = Mat4.identity();
-        m = m.times(Mat4.translation(Vec.of(200, 5, -200)));
-        this.draw_cow(graphics_state, m, .5, false);
-        m = m.times(Mat4.translation(Vec.of(20, 0, 20)));
-        this.draw_cow(graphics_state, m, .5, false);
-        m = m.times(Mat4.translation(Vec.of(-40, 0, -65)));
-        this.draw_cow(graphics_state, m, .5, false);
+        m = m.times(Mat4.translation(Vec.of(375, 5, -205)));
+        this.draw_cow(graphics_state, m, .5, false, false);
+
+        //TODO insert more cows
 
         // ufo
         m = this.get_ufo_matrix(t);
