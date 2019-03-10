@@ -38,7 +38,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
             'ball': new Subdivision_Sphere(4),
             'torus': new Torus(10, 0.0001, 1000, 0),
             'UFOBeam': new UFOBeam(4, 10, 300),
-            'heart': new Heart()
+            'heart': new Heart(),
+            'prism' : new TriangularPrism(),
         }
         this.submit_shapes(context, shapes);
         this.shape_count = Object.keys(shapes).length;
@@ -125,7 +126,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
             });
 
         // heart particle effect data
-        this.numParticles = 100;
+        this.numParticles = 1;
         this.particleRadius = 10;
         this.particleScale = 0.2;
 
@@ -188,6 +189,9 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
         this.t = 0;
         this.draw_beam = false;
+        this.red = Color.of(.7294, .1569, .0549, 1);
+        this.white = Color.of(1,1,1,1);
+        this.roof = Color.of(0.3255,0.3019,0.2314,1);
         
     }
     
@@ -204,6 +208,11 @@ class Assignment_Two_Skeleton extends Scene_Component {
             let m = Mat4.identity();
             m = this.get_ufo_matrix(t);
             this.draw_ufo(graphics_state, m, true, false);
+        });
+
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+           let m = Mat4.identity();
+           this.draw_barn(graphics_state, m, true); 
         });
     }
 
@@ -525,6 +534,59 @@ class Assignment_Two_Skeleton extends Scene_Component {
 
     }
 
+    draw_barn(graphics_state, m, depth_test) {
+        m = m.times(Mat4.translation(Vec.of(120, 1, -200)));
+        this.shapes["box"].draw(
+        graphics_state,
+        m.times(Mat4.scale(Vec.of(17,23.025,24))),
+         (depth_test ? this.shadowmap : this.clay.override({color: this.red})));
+
+        this.shapes["prism"].draw(
+            graphics_state,
+            m.times(Mat4.translation(Vec.of(0, 40, 0)))
+            .times(Mat4.rotation(-3*Math.PI/4, Vec.of(0,0,1)))
+            .times(Mat4.scale(24,1,1)),
+            (depth_test ? this.shadowmap : this.clay.override({color:this.red}))
+        );
+
+        this.shapes["box"].draw(
+            graphics_state,
+            m.times(Mat4.translation(Vec.of(13.5,11.5,12)))
+            .times(Mat4.scale(Vec.of(4,4,4))),
+            (depth_test ? this.shadowmap : this.clay.override({color:this.white}))
+        );
+
+        this.shapes["box"].draw(
+            graphics_state,
+            m.times(Mat4.translation(Vec.of(13.5,11.5,-12)))
+            .times(Mat4.scale(Vec.of(4,4,4))),
+            (depth_test ? this.shadowmap : this.clay.override({color:this.white}))
+        );
+
+        this.shapes["box"].draw(
+            graphics_state,
+            m.times(Mat4.translation(Vec.of(0,7,21)))
+            .times(Mat4.scale(Vec.of(6,8,4))),
+            (depth_test ? this.shadowmap : this.clay.override({color:this.white}))
+        );
+
+        this.shapes["box"].draw(
+            graphics_state,
+            m.times(Mat4.translation(Vec.of(9,31,0)))
+            .times(Mat4.rotation(Math.PI/4, Vec.of(0,0,1)))
+            .times(Mat4.scale(Vec.of(.5,13,24.1))),
+            (depth_test ? this.shadowmap : this.clay.override({color:this.roof}))
+        );
+
+        this.shapes["box"].draw(
+            graphics_state,
+            m.times(Mat4.translation(Vec.of(-9,31,0)))
+            .times(Mat4.rotation(Math.PI/-4, Vec.of(0,0,1)))
+            .times(Mat4.scale(Vec.of(.5,13,24.1))),
+            (depth_test ? this.shadowmap : this.clay.override({color:this.roof}))
+        );
+    }
+
 
     display(graphics_state) {
         // Use the lights stored in this.lights.
@@ -555,6 +617,9 @@ class Assignment_Two_Skeleton extends Scene_Component {
         // ufo
         m = this.get_ufo_matrix(t);
         this.draw_ufo(graphics_state, m, false);
+
+        m = Mat4.identity();
+        this.draw_barn(graphics_state, m, false);
 
         this.lights[0].clearDepthBuffer();
 
