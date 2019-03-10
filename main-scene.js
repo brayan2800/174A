@@ -37,7 +37,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
             'cone': new Cone(20),
             'ball': new Subdivision_Sphere(4),
             'torus': new Torus(10, 0.0001, 1000, 0),
-            'UFOBeam': new UFOBeam(4, 10, 300)
+            'UFOBeam': new UFOBeam(4, 10, 300),
+            'heart': new Heart()
         }
         this.submit_shapes(context, shapes);
         this.shape_count = Object.keys(shapes).length;
@@ -100,6 +101,13 @@ class Assignment_Two_Skeleton extends Scene_Component {
             texture: context.get_instance("assets/cow.png", false)
         });
 
+        this.heart = context.get_instance(Flat_Shader).material(Color.of(0, 0, 0, 1), {
+            specularity: 0,
+            ambient: 1.0,
+            diffusivity:0.6,
+            texture: context.get_instance("assets/heart.png", false)
+        });
+
         this.shadowmap = context.get_instance(Shadow_Shader).material();
 
         this.skybox_shader = context.get_instance(Skybox_Shader).material();
@@ -115,6 +123,53 @@ class Assignment_Two_Skeleton extends Scene_Component {
             this.shape_materials[t] = this.texture_base.override({
                 texture: context.get_instance(shape_textures[t])
             });
+
+        // heart particle effect data
+        this.numParticles = 100;
+        this.particleRadius = 10;
+        this.particleScale = 0.2;
+
+        this.lifetimes = [];
+        this.offsets = [];
+        this.velocities = [];
+
+        for (var i = 0; i < this.numParticles; i++) {
+            var lifetime = 2.5 * Math.random() + 2.5;
+            this.lifetimes.push(lifetime);
+
+            var xStartOffset = 2 * this.particleRadius * Math.random() - this.particleRadius;
+            // x adjustment
+            xStartOffset /= 1;
+
+            var yStartOffset = 2 * this.particleRadius * Math.random() - this.particleRadius;
+            // y adjustment
+            yStartOffset /= 1;
+
+            var zStartOffset = 2 * this.particleRadius * Math.random() - this.particleRadius;
+            // z adjustment
+            zStartOffset /= 1;
+
+            // push the offsets
+            this.offsets.push(xStartOffset);
+            this.offsets.push(yStartOffset);
+            this.offsets.push(zStartOffset);
+
+            var yVelocity = 4 * Math.random();
+            
+            var xVelocity = 0.1 * Math.random();
+            if (xStartOffset > 0) {
+                xVelocity *= -1;
+            }
+
+            var zVelocity = 0.1 * Math.random();
+            if (zStartOffset > 0) {
+                zVelocity *= -1;
+            }
+
+            this.velocities.push(xVelocity);
+            this.velocities.push(yVelocity);
+            this.velocities.push(zVelocity);
+        }
         
         this.lights = [new Light(gl, Mat4.look_at(
                                           Vec.of(210, 230.0, -200), // Position of the light
@@ -129,6 +184,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
                                       "assets/hills_up.png",
                                       "assets/hills_bk.png",
                                       "assets/hills_ft.png"]);
+
 
         this.t = 0;
         this.draw_beam = false;
@@ -165,6 +221,34 @@ class Assignment_Two_Skeleton extends Scene_Component {
         });
    }
 
+   draw_particle_effects(graphics_state, m, depth_test) {
+        var base_location = m.times(Mat4.translation(Vec.of(0.0, 0.0, 10.0))).times(Mat4.scale(this.particleScale, this.particleScale, this.particleScale));
+        var numParticles = 300;
+        var radius = 0.5;
+
+        for (var i = 0; i < this.numParticles; i++) {
+            var starting_location = Vec.of(this.offsets[i * 3], this.offsets[i * 3 + 1], this.offsets[i * 3 + 2])
+            var age = this.t % this.lifetimes[i];
+            var movement = Vec.of(age * this.velocities[i * 3], age * this.velocities[i * 3 + 1], age * this.velocities[i * 3 + 2]);
+
+            this.lights[0].renderOutputBuffer(graphics_state, () => {
+                this.shapes["heart"].draw(
+                    graphics_state,
+                    base_location.times(Mat4.translation(starting_location)).times(Mat4.translation(movement)),
+                    (depth_test ? this.shadowmap: this.heart)
+                );
+            })
+        }
+
+        this.lights[0].renderOutputBuffer(graphics_state, () => {
+            this.shapes["heart"].draw(
+                graphics_state,
+                base_location,
+                (depth_test ? this.shadowmap: this.heart)
+            );
+        })
+    }
+
     draw_skybox(graphics_state, gl) {
         this.skybox.renderSkybox(gl, () => {
            let m = Mat4.identity();
@@ -189,6 +273,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
             this.draw_cow_tail(graphics_state, m, scale, depth_test);
             this.draw_cow_head(graphics_state, m, scale, depth_test);
         })
+        
+        this.draw_particle_effects(graphics_state, m, depth_test);
     }
 
     draw_cow_body(graphics_state, m, scale, depth_test) {   
