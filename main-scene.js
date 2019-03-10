@@ -221,7 +221,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
             // Makes the beam extend and retract from the UFO
             // Size goes from 0.2 to 3.0
             let scale_constant = -1*Math.PI/7;
-            let beam_size =  (this.t >= 28.15 && this.t <= 35.15) ? -1.4*Math.sin(scale_constant*(this.t) + Math.PI/2) + 1.6 : 3.0;
+            let beam_size =  (this.t >= 28.15 && this.t <= 35.15) ? -1.4*Math.sin(scale_constant*(this.t) + Math.PI/2) + 1.6 : 
+            (this.t  >= 45.65 && this.t <= 49.15) ? -3.0*Math.sin((scale_constant*(this.t)*2) + Math.PI/2) + 3.0 : 3.0;
 
             this.shapes["UFOBeam"].draw(
                 graphics_state,
@@ -297,12 +298,26 @@ class Assignment_Two_Skeleton extends Scene_Component {
             ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(200, 30, -200)));
         }
         else if (t > 35.15 && t<= 38.65) {
-
+            this.draw_beam = true;
             y_motion = 30 + -3*((Math.sin(((t - 0.15)*scale_constant) + Math.PI)));
             ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(200, y_motion, -200)));
         }
         else if ( t > 38.65 && t <= 42.15) {
-            //TODO: have ufo fly over and drop off cow somewhere else
+            this.draw_beam = true;
+            x_motion = 200 - 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            y_motion = 33;
+            z_motion = -200 + 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
+        }
+        else if (t > 42.15 && t <= 45.65) {
+            y_motion = 33 - 3*((Math.sin(((t - 3.65)*scale_constant)+ Math.PI/2)+1)/2);
+            this.draw_beam = true;
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
+        }
+        else if (t > 45.65 && t <= 52.65) {
+            y_motion = 70 + -40*((Math.sin(((t - 0.15)*scale_constant)+ Math.PI)));
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
+            if (t > 49.15) this.draw_beam = false;
         }
         else {
             this.t = 0; //reset to 0 to start over animation
