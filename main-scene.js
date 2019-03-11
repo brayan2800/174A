@@ -243,7 +243,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
            if (cow == this.cow_list.length - 1) {
                 if (this.t > 51.5) {
                     this.lights[0].renderDepthBuffer(graphics_state, () => { 
-                        this.draw_cow(graphics_state, cur_m, true, false);
+                        this.draw_cow(graphics_state, cur_m.times(Mat4.scale(Vec.of(Math.min(1.0, this.t - 51.5), Math.min(1.0, this.t - 51.5), Math.min(1.0, this.t - 51.5)))), false, false);
                     });
                 }
            } else {
@@ -311,24 +311,27 @@ class Assignment_Two_Skeleton extends Scene_Component {
             this.draw_all_legs(graphics_state, m, depth_test);
             this.draw_cow_tail(graphics_state, m, depth_test);
             this.draw_cow_head(graphics_state, m, depth_test);
-        })
 
-        if(particle && this.t >= 50.7){
-            this.draw_particle_effects(graphics_state, m, depth_test);
-        }
+            if(particle && this.t >= 50.7){
+                this.draw_particle_effects(graphics_state, m, depth_test);
+            }
+        })
     }
 
-    draw_cow_body(graphics_state, m, depth_test) {   
+    draw_cow_body(graphics_state, m, depth_test) {
+        // base of body  
         this.shapes["cylinder"].draw(
             graphics_state,m
             .times(Mat4.rotation(Math.PI / 2, Vec.of(0, 1, 0)))
             .times(Mat4.scale(4)),
             (depth_test ? this.shadowmap : this.cow));
+        // front circle
         this.shapes["ball"].draw(
             graphics_state,m
             .times(Mat4.translation(Vec.of( -4, 0, 0)))
             .times(Mat4.scale(Vec.of( 3, 4, 4))),
             (depth_test ? this.shadowmap : this.cow));
+        // back circle
         this.shapes["ball"].draw(
             graphics_state,m
             .times(Mat4.translation(Vec.of( 4, 0, 0)))
@@ -337,21 +340,21 @@ class Assignment_Two_Skeleton extends Scene_Component {
     }
 
     draw_all_legs(graphics_state, m, depth_test){  //draw the four legs
-        this.draw_cow_leg(graphics_state, m, 1, 1, depth_test); 
-        this.draw_cow_leg(graphics_state, m, -1, 1, depth_test);
-        this.draw_cow_leg(graphics_state, m, 1, -1, depth_test);
-        this.draw_cow_leg(graphics_state, m, -1, -1, depth_test);
+        var leg_positions = [[1, 1], [-1, 1], [1, -1], [-1, -1]];
+        for (var i = 0; i < leg_positions.length; i++) {
+            this.draw_cow_leg(graphics_state, m, leg_positions[i][0], leg_positions[i][1], depth_test);
+        }
     }
 
     draw_cow_leg(graphics_state, m, side, fb, depth_test) {
         m = m.times(Mat4.translation(Vec.of(fb * -4.3, -Math.sqrt(8), side * Math.sqrt(8)))); 
         this.shapes["ball"].draw( 
-            graphics_state,m
-            .times(Mat4.scale(1.3)),
+            graphics_state,
+            m.times(Mat4.scale(1.3)),
             (depth_test ? this.shadowmap : this.cow));
         this.shapes["cylinder"].draw( 
-            graphics_state,m
-            .times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)))
+            graphics_state,
+            m.times(Mat4.rotation(Math.PI / 2, Vec.of(1, 0, 0)))
             .times(Mat4.translation(Vec.of(0, 0, 2)))
             .times(Mat4.scale(Vec.of( 1.3, 1.3, 5))),
             (depth_test ? this.shadowmap : this.cow));
@@ -394,9 +397,10 @@ class Assignment_Two_Skeleton extends Scene_Component {
   draw_cow_head(graphics_state, m, depth_test) {
     m = m.times(Mat4.rotation(-Math.PI / 2, Vec.of(0, 1, 0)))
         .times(Mat4.translation(Vec.of(0, 0, 4)))
+        .times(Mat4.translation(Vec.of(0, 3.197979, 1.8278579)))
         .times(Mat4.rotation(-Math.PI / 4, Vec.of(1, 0, 0)))
-        .times(Mat4.translation(Vec.of(0, 0, Math.sqrt(25 / 2) -.2)));
-    m = m.times(Mat4.translation(Vec.of(0, -0.8, 2.2)));
+        .times(Mat4.rotation((-Math.PI / 64) * Math.sin(this.t), Vec.of(1, 0, 0)));
+    m = m.times(Mat4.translation(Vec.of(0, 0, 2)));
     this.shapes["box"].draw(
         graphics_state,m
         .times(Mat4.scale(Vec.of(2, 3.5, 2))),
@@ -411,14 +415,16 @@ class Assignment_Two_Skeleton extends Scene_Component {
         .times(Mat4.rotation((-Math.PI/7) , Vec.of(0,  1, 0)))
         .times(Mat4.scale(Vec.of(1.7, 0.8, 0.3)))
         .times(Mat4.translation(Vec.of(-1.9, 3, 7)))
-        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0))),
+        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0)))
+        .times(Mat4.rotation((-Math.PI / 32) * Math.sin(this.t), Vec.of(0, 1, 0))),
         (depth_test ? this.shadowmap : this.cow)); //ear
     this.shapes["box"].draw(
         graphics_state,m
         .times(Mat4.rotation((Math.PI/7) , Vec.of(0,  1, 0)))
         .times(Mat4.scale(Vec.of(1.7, 0.8, 0.3)))
         .times(Mat4.translation(Vec.of(1.9, 3, 7 )))
-        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0))),
+        .times(Mat4.rotation((2*Math.PI/7) , Vec.of(0,  1, 0)))
+        .times(Mat4.rotation((Math.PI / 32) * Math.sin(this.t), Vec.of(0, 1, 0))),
         (depth_test ? this.shadowmap : this.cow));  //ear
   }
 
@@ -821,7 +827,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
             
            if (cow == this.cow_list.length - 1) {
                if (this.t > 51.5) {
-                   this.draw_cow(graphics_state, cur_m, false, false);
+                   this.draw_cow(graphics_state, cur_m.times(Mat4.scale(Vec.of(Math.min(1.0, this.t - 51.5), Math.min(1.0, this.t - 51.5), Math.min(1.0, this.t - 51.5)))), false, false);
                }
            } else {
                this.draw_cow(graphics_state, cur_m, false, false);
