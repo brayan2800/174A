@@ -438,12 +438,19 @@ class Assignment_Two_Skeleton extends Scene_Component {
         }
         else if ( t > 38.65 && t <= 42.15) {  //move cow with spaceship and beam
             x_motion = 200 - 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
-            y_motion = 8 + 60*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
             z_motion = -200 + 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
 
-            x_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
-            y_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
-            z_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+            if (t > 41) {
+                x_scale = 1.0 - ((t - 41) / 1.15);
+                y_scale = 1.0 - ((t - 41) / 1.15);
+                z_scale = 1.0 - ((t - 41) / 1.15);
+                y_motion = 8 + 30*((t - 41) / 1.15);
+            } else {
+                x_scale = 1.0;
+                y_scale = 1.0;
+                z_scale = 1.0;
+                y_motion = 8;
+            }
 
             cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
             cow_matrix = cow_matrix.times(Mat4.scale(Vec.of(x_scale, y_scale, z_scale)));
@@ -592,12 +599,19 @@ class Assignment_Two_Skeleton extends Scene_Component {
         else if ( t > 38.65 && t <= 42.15) {
             this.draw_beam = true;
 
-            x_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
-            y_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
-            z_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+            if (t > 41.0) {
+                x_scale = 1.0 - ((t - 41.0) / 1.15);
+                y_scale = 1.0 - ((t - 41.0) / 1.15);
+                z_scale = 1.0 - ((t - 41.0) / 1.15);
+                y_motion = 33.0 + 5*((t - 41.0) / 1.15);
+            } else {
+                x_scale = 1.0;
+                y_scale = 1.0;
+                z_scale = 1.0;
+                y_motion = 33;
+            }
 
             x_motion = 200 - 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
-            y_motion = 33;
             z_motion = -200 + 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
             ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
             ufo_matrix = ufo_matrix.times(Mat4.scale(Vec.of(x_scale,y_scale,z_scale)));
@@ -623,7 +637,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         else if (t > 50.65 && t <= 67.65) {
             this.draw_beam = false;
             this.camera_scene = 4;
-            
+
             y_motion = 70 + -40*((Math.sin((2*(t - 50.65)*scale_constant)+ Math.PI/2)+1)/2);
 
             x_scale = (Math.sin((2*(t-50.65)*scale_constant) + Math.PI/2) + 1)/2;
@@ -650,8 +664,6 @@ class Assignment_Two_Skeleton extends Scene_Component {
         var up = Vec.of(0, 1, 0);
         var x_motion, y_motion, z_motion;
         var x_ref, y_ref, z_ref;
-
-        //console.log(this.t);
 
         //0-14s look around world, end looking at abducted cow
         if (this.camera_scene == 0) {
@@ -784,8 +796,6 @@ class Assignment_Two_Skeleton extends Scene_Component {
         if (!this.paused)
             this.t += graphics_state.animation_delta_time / 1000;
         const t = this.t;
-
-        console.log(this.t);
 
         this.set_camera(graphics_state, t);
         this.renderShadowmap(graphics_state, t);
