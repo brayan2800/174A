@@ -479,12 +479,12 @@ window.UFOBeam = window.classes.UFOBeam = class UFOBeam extends Shape {
 
 window.Heart_Particles = window.classes.Heart_Particles = class Heart_Particles extends Shape {
     constructor() {
-        super("positions", "normals", "texture_coords", "lifetimes", "centerOffsets", "velocities");
+        super("positions", "normals", "texture_coords", "lifetimes", "centerOffsets", "velocities", "start_rotations", "end_rotations");
 
-        var numParticles = 500;
+        var numParticles = 50;
         var lifetime_base = 2;
         var lifetime_range = 1;
-        var diameter = 5
+        var diameter = 7;
         var velocity = 3;
 
         for (var i = 0; i < numParticles; i++) {
@@ -578,7 +578,15 @@ window.Heart_Particles = window.classes.Heart_Particles = class Heart_Particles 
             }
 
             this.velocities.push(...Vec.cast(
-                ...Array(74).fill(Vec.of(xSideVelocity , upVelocity, 1))
+                ...Array(74).fill(Vec.of(xSideVelocity , upVelocity, zSideVelocity))
+            ));
+
+            this.start_rotations.push(...Vec.cast(
+                ...Array(74).fill(Vec.of(Math.random() * 2 * Math.PI))
+            ));
+
+            this.end_rotations.push(...Vec.cast(
+                ...Array(74).fill(Vec.of((Math.random() * 2 * Math.PI - Math.PI)))
             ));
 
             this.indices.push(

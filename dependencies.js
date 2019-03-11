@@ -1367,7 +1367,9 @@ window.Heart_Shader = window.classes.Heart_Shader = class Heart_Shader extends S
             tex_coord: "texture_coords",
             lifetime: "lifetimes",
             centerOffset: "centerOffsets",
-            velocity: "velocities"
+            velocity: "velocities",
+            start_rotation: "start_rotations",
+            end_rotation: "end_rotations"
         }[name];
     }
     
@@ -1410,6 +1412,8 @@ window.Heart_Shader = window.classes.Heart_Shader = class Heart_Shader extends S
             attribute float lifetime;
             attribute vec3 centerOffset;
             attribute vec3 velocity;
+			attribute float start_rotation;
+			attribute float end_rotation;
 
             varying float v_lifetime;
 
@@ -1421,12 +1425,20 @@ window.Heart_Shader = window.classes.Heart_Shader = class Heart_Shader extends S
 
 				vec4 position = vec4(object_space_pos + centerOffset + (timeInLifetime * velocity), 1.0);
 
-				position.xyz *= 0.5;
+				position = mat4(cos(start_rotation), 0.0, -sin(start_rotation), 0.0,
+								0.0, 1, 0.0, 0.0,
+								sin(start_rotation), 0.0, cos(start_rotation), 0.0,
+								0.0, 0.0, 0.0, 1) * position;
+
+				position = mat4(cos(end_rotation * (timeInLifetime / lifetime)), 0.0, -sin(end_rotation * (timeInLifetime / lifetime)), 0.0,
+								0.0, 1.0, 0.0, 0.0,
+								sin(end_rotation * (timeInLifetime / lifetime)), 0.0, cos(end_rotation * (timeInLifetime / lifetime)), 0.0,
+								0.0, 0.0, 0.0, 1) * position;
 				
 				// implements cylindrical billboarding
-				position = mat4(1.0, 0.0, 0.0, 0.0,
-								0.0, 1.0, 0.0, 0.0,
-								0.0, 0.0, 1.0, 0.0,
+				position = mat4(camera_model_transform[0][0], camera_model_transform[0][1], camera_model_transform[0][2], 0.0,
+								camera_model_transform[1][0], camera_model_transform[1][1], camera_model_transform[1][2], 0.0,
+								camera_model_transform[2][0], camera_model_transform[2][1], camera_model_transform[2][2], 0.0,
 								camera_model_transform[3][0], camera_model_transform[3][1], camera_model_transform[3][2], 1.0) * position;
 
 				gl_Position = perspective_transform * position;
