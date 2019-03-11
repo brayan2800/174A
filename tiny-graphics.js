@@ -578,7 +578,6 @@ class Shape extends Vertex_Buffer {
     }
 }
 
-
 // Stores things that affect multiple shapes, such as lights and the camera.
 class Graphics_State {
     constructor(camera_transform = Mat4.identity(), projection_transform = Mat4.identity()) {
@@ -1107,7 +1106,6 @@ class Skybox {
         this.gl = gl;
 
         this.texture_id = this.load_texture_cube(gl, images);
-
     }
 
     load_texture_cube(gl, urls) {

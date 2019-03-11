@@ -38,7 +38,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
             'ball': new Subdivision_Sphere(4),
             'torus': new Torus(10, 0.0001, 1000, 0),
             'UFOBeam': new UFOBeam(4, 10, 300),
-            'heart': new Heart(),
+            'heart': new Heart_Particles(),
             'prism' : new TriangularPrism(),
         }
         this.submit_shapes(context, shapes);
@@ -102,7 +102,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
             texture: context.get_instance("assets/cow.png", false)
         });
 
-        this.heart = context.get_instance(Flat_Shader).material(Color.of(0, 0, 0, 1), {
+        this.heart = context.get_instance(Heart_Shader).material(Color.of(0, 0, 0, 1), {
             specularity: 0,
             ambient: 1.0,
             diffusivity:0.6,
@@ -276,21 +276,14 @@ class Assignment_Two_Skeleton extends Scene_Component {
    }
 
    draw_particle_effects(graphics_state, m, depth_test) {
-        var base_location = m.times(Mat4.translation(Vec.of(-10.0, 5.0, 7.5))).times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0))).times(Mat4.scale(this.particleScale, this.particleScale, this.particleScale));
-
-        for (var i = 0; i < this.numParticles; i++) {
-            var starting_location = Vec.of(this.offsets[i * 3], this.offsets[i * 3 + 1], this.offsets[i * 3 + 2])
-            var age = this.t % this.lifetimes[i];
-            var movement = Vec.of(age * this.velocities[i * 3], age * this.velocities[i * 3 + 1], age * this.velocities[i * 3 + 2]);
-
-            this.lights[0].renderOutputBuffer(graphics_state, () => {
-                this.shapes["heart"].draw(
-                    graphics_state,
-                    base_location.times(Mat4.translation(starting_location)).times(Mat4.translation(movement)),
-                    (depth_test ? this.shadowmap: this.heart)
-                );
-            })
-        }
+        var base_location = m.times(Mat4.translation(Vec.of(-10.0, 5.0, 7.5))).times(Mat4.rotation(Math.PI/2, Vec.of(0, 1, 0)));
+        this.lights[0].renderOutputBuffer(graphics_state, () => {
+            this.shapes["heart"].draw(
+                graphics_state,
+                base_location,
+                (depth_test ? this.shadowmap: this.heart)
+            );
+        })
     }
 
     draw_skybox(graphics_state, gl) {
@@ -305,9 +298,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
                 this.skybox_shader
            )
         });
-
         this.draw_floor(graphics_state);
-
     }
 
     draw_cow(graphics_state, m, scale, depth_test, particle) {
@@ -317,9 +308,9 @@ class Assignment_Two_Skeleton extends Scene_Component {
             this.draw_cow_tail(graphics_state, m, scale, depth_test);
             this.draw_cow_head(graphics_state, m, scale, depth_test);
         })
-        if(particle && this.t >= 45.7){
+        //if(particle && this.t >= 45.7){
             this.draw_particle_effects(graphics_state, m, depth_test);
-        }
+        //}
     }
 
     draw_cow_body(graphics_state, m, scale, depth_test) {   
@@ -493,7 +484,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
              times(Mat4.translation(Vec.of(0, 0.12, 0))),
            (depth_test ? this.shadowmap : this.ufo_bottom));
         
-        if (this.draw_beam) {
+        if (this.draw_beam && !depth_test) {
             // Drawing the beam
             // Makes the beam extend and retract from the UFO
             // Size goes from 0.2 to 3.0
@@ -661,6 +652,9 @@ class Assignment_Two_Skeleton extends Scene_Component {
     display(graphics_state) {
         // Use the lights stored in this.lights.
         graphics_state.lights = this.lights;
+
+        // pass the graphics_state information related to the particle effects
+        graphics_state.lifetimes = this.lifetimes;
         
         
         // Find how much time has passed in seconds, and use that to place shapes.

@@ -1032,7 +1032,7 @@ window.Perlin_Shadow_Phong_Shader = window.classes.Perlin_Shadow_Phong_Shader =
  					vertex_relative_to_light = vertex_relative_to_light * 0.5 + 0.5;
 					fragmentDepth = vertex_relative_to_light;
 
-					fragmentDepth.z -= 0.000037;
+					fragmentDepth.z -= 0.000029;
 					
 					float texelDepth = 0.0;
 
@@ -1321,7 +1321,7 @@ window.Movement_Controls = window.classes.Movement_Controls = class Movement_Con
     }
 }
 
-window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shader {
+window.Heart_Shader = window.classes.Heart_Shader = class Heart_Shader extends Shader {
 
     // Define an internal class "Material" that stores the standard settings found in Phong lighting.
     material(color, properties) {
@@ -1364,7 +1364,10 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
         return {
             object_space_pos: "positions",
             normal: "normals",
-            tex_coord: "texture_coords"
+            tex_coord: "texture_coords",
+            lifetime: "lifetimes",
+            centerOffset: "centerOffsets",
+            velocity: "velocities"
         }[name];
     }
     
@@ -1378,14 +1381,9 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
             const int N_LIGHTS = 2;
             uniform float ambient, diffusivity, specularity, smoothness, animation_time, attenuation_factor[N_LIGHTS];
 
-            // Flags for alternate shading methods
-            // not sure that we need these?
-            uniform bool GOURAUD, COLOR_NORMALS, USE_TEXTURE;
+            uniform bool COLOR_NORMALS, USE_TEXTURE;
             uniform vec4 lightPosition[N_LIGHTS], lightColor[N_LIGHTS], shapeColor;
-            
-            // Specifier "varying" means a variable's final value will be passed from the vertex shader
-            // on to the next phase (fragment shader), then interpolated per-fragment, weighted by the 
-            // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).       
+                 
             varying vec3 N, E;                     
             varying vec2 f_tex_coord;             
             varying vec4 VERTEX_COLOR;            
@@ -1395,10 +1393,7 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
             vec3 flat_lights( vec3 N ) {
                 vec3 result = vec3(0.0);
                 for(int i = 0; i < N_LIGHTS; i++) {
-                    vec3 H = normalize( L[i] + E );
-                   
                     float diffuse = max( dot(N, L[i]), 0.0 );
-
                     result += lightColor[i].xyz * diffuse * diffusivity;
                 }
                 return result;
@@ -1411,12 +1406,32 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
             attribute vec3 object_space_pos, normal;
             attribute vec2 tex_coord;
 
-            uniform mat4 camera_transform, camera_model_transform, projection_camera_model_transform;
+            // particle parameters
+            attribute float lifetime;
+            attribute vec3 centerOffset;
+            attribute vec3 velocity;
+
+            varying float v_lifetime;
+
+            uniform mat4 camera_transform, camera_model_transform, projection_camera_model_transform, perspective_transform;
             uniform mat3 inverse_transpose_modelview;
 
             void main() {
-                // The vertex's final resting place (in NDCS).
-                gl_Position = projection_camera_model_transform * vec4(object_space_pos, 1.0);
+				float timeInLifetime = mod(animation_time, lifetime);
+
+				vec4 position = vec4(object_space_pos + centerOffset + (timeInLifetime * velocity), 1.0);
+
+				position.xyz *= 0.5;
+				
+				// implements cylindrical billboarding
+				position = mat4(1.0, 0.0, 0.0, 0.0,
+								camera_model_transform[1][0], camera_model_transform[1][1], camera_model_transform[1][2], 0.0,
+								0.0, 0.0, 1.0, 0.0,
+								camera_model_transform[3][0], camera_model_transform[3][1], camera_model_transform[3][2], 1.0) * position;
+
+				gl_Position = perspective_transform * position;
+
+				v_lifetime = lifetime;
                 
                 // The final normal vector in screen space.
                 N = normalize( inverse_transpose_modelview * normal );
@@ -1446,16 +1461,9 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
         return `
             uniform sampler2D texture;
 
-            void main() {
-                // Do smooth "Phong" shading unless options like "Gouraud mode" are wanted instead.
-                // Otherwise, we already have final colors to smear (interpolate) across vertices.
-                if( GOURAUD || COLOR_NORMALS ) {
-                    gl_FragColor = VERTEX_COLOR;
-                    return;
-                }                                 
-                // If we get this far, calculate Smooth "Phong" Shading as opposed to Gouraud Shading.
-                // Phong shading is not to be confused with the Phong Reflection Model.
+            varying float v_lifetime;
 
+            void main() {                              
                 // Sample the texture image in the correct place.
                 vec4 tex_color = texture2D( texture, f_tex_coord );                    
 
@@ -1467,6 +1475,7 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
                 
                 // Compute the final color with contributions from lights.
                 gl_FragColor.xyz += flat_lights( N );
+                gl_FragColor.w *= 1.0 - (mod(animation_time, v_lifetime) / v_lifetime - .25);
             }`;
     }
 
@@ -1476,7 +1485,7 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
         // First, send the matrices to the GPU, additionally cache-ing some products of them we know we'll need:
         this.update_matrices(g_state, model_transform, gpu, gl);
         gl.uniform1f(gpu.animation_time_loc, g_state.animation_time / 1000);
-
+		
         if (g_state.gouraud === undefined) {
             g_state.gouraud = g_state.color_normals = false;
         }
@@ -1517,6 +1526,8 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
         gl.uniform4fv(gpu.lightPosition_loc, lightPositions_flattened);
         gl.uniform4fv(gpu.lightColor_loc, lightColors_flattened);
         gl.uniform1fv(gpu.attenuation_factor_loc, lightAttenuations_flattened);
+
+        // update the particle effect stuff
     }
 
     // Helper function for sending matrices to GPU.
@@ -1533,6 +1544,7 @@ window.Flat_Shader = window.classes.Flat_Shader = class Flat_Shader extends Shad
         // call, and thus across each instance of the vertex shader.
         // Transpose them since the GPU expects matrices as column-major arrays.                                  
         gl.uniformMatrix4fv(gpu.camera_transform_loc, false, Mat.flatten_2D_to_1D(C.transposed()));
+        gl.uniformMatrix4fv(gpu.perspective_transform_loc, false, Mat.flatten_2D_to_1D(P.transposed()));
         gl.uniformMatrix4fv(gpu.camera_model_transform_loc, false, Mat.flatten_2D_to_1D(CM.transposed()));
         gl.uniformMatrix4fv(gpu.projection_camera_model_transform_loc, false, Mat.flatten_2D_to_1D(PCM.transposed()));
         gl.uniformMatrix3fv(gpu.inverse_transpose_modelview_loc, false, Mat.flatten_2D_to_1D(inv_CM));
