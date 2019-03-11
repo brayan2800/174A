@@ -199,7 +199,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.camera_scene = 0;
 
         //x, y, z , y_angle
-        this.cow_list = [[375, 5, -205, 0], //cow to be selected
+        this.cow_list = [[325, 5, -205, 0], //cow to be selected
 //                          [250, 5, -250, 0],    
 //                          [280, 5, -270, Math.PI/4],
 //                          [300, 5, -300, Math.PI/3],
@@ -243,11 +243,11 @@ class Assignment_Two_Skeleton extends Scene_Component {
         }     
 
         //cows special friend
-//         this.lights[0].renderDepthBuffer(graphics_state, () => {
-//             let m = Mat4.identity();
-//             m = m.times(Mat4.translation(Vec.of(375, 5, -205)));
-//             this.draw_cow(graphics_state, m, .5, true, false);
-//         });
+         this.lights[0].renderDepthBuffer(graphics_state, () => {
+             let m = Mat4.identity();
+             m = m.times(Mat4.translation(Vec.of(325, 5, -205)));
+             this.draw_cow(graphics_state, m, .5, true, false);
+         });
         
         
 
@@ -270,7 +270,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.lights[0].renderOutputBuffer(graphics_state, () => {
             this.shapes["square"].draw(
                     graphics_state,
-                    m.times(Mat4.scale(Vec.of(200, 200, 200))
+                    m.times(Mat4.scale(Vec.of(240, 240, 240))
                      .times(Mat4.translation(Vec.of(0,0.0,-0.1)))
                      .times(Mat4.rotation(-Math.PI/2, Vec.of(1, 0, 0)))),
                     this.floor);
@@ -293,7 +293,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
            let m = Mat4.identity();
            this.shapes['box'].draw(
                 graphics_state,
-                m.times(Mat4.scale(Vec.of(200, 200, 200))
+                m.times(Mat4.scale(Vec.of(240, 240, 240))
                  .times(Mat4.translation(Vec.of(1,0.15,-1.1)))
                  .times(Mat4.rotation(Math.PI, Vec.of(0, 0, 1)))
                  .times(Mat4.rotation(-Math.PI, Vec.of(0, 1, 0)))),
@@ -436,20 +436,29 @@ class Assignment_Two_Skeleton extends Scene_Component {
             cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(200, y_motion, -200)));
         }
         else if ( t > 38.65 && t <= 42.15) {  //move cow with spaceship and beam
-            x_motion = 200 - 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
-            y_motion = 8;
-            z_motion = -200 + 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            x_motion = 200 - 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            y_motion = 8 + 60*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            z_motion = -200 + 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+
+            x_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+            y_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+            z_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+
             cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
+            cow_matrix = cow_matrix.times(Mat4.scale(Vec.of(x_scale, y_scale, z_scale)));
         }
         else if (t > 42.15 && t <= 47.15) {
-            //Do Nothing
+            scale_constant = -1*Math.PI/5;
+            y_motion = 8 + 20*((Math.sin(((t - 42.15)*scale_constant)+ Math.PI/2)+1)/2);
+
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(325, y_motion, -220)));
         }
         else if (t > 47.15 && t <= 50.65) {  
-            y_motion = 8 - 3*((Math.sin(((t - 8.65)*scale_constant)+ Math.PI/2)+1)/2);
-            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
+            y_motion = 5 + 3*((Math.sin((2*(t - 47.15)*scale_constant)+ Math.PI/2)+1)/2);
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(325, y_motion, -220)));
         }
         else if (t > 50.65 && t <= 75) {     
-            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(375, 5, -220)));
+            cow_matrix = cow_matrix.times(Mat4.translation(Vec.of(325, 5, -220)));
         }
         else {
             this.t = 0; //reset to 0 to start over animation
@@ -496,7 +505,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
             // Size goes from 0.2 to 3.0
             let scale_constant = -1*Math.PI/7;
             let beam_size =  (this.t >= 28.15 && this.t <= 35.15) ? -1.4*Math.sin(scale_constant*(this.t) + Math.PI/2) + 1.6 : 
-            (this.t  >= 45.65 && this.t <= 49.15) ? -3.0*Math.sin((scale_constant*(this.t)*2) + Math.PI/2) + 3.0 : 3.0;
+            (this.t  >= 47.15 && this.t <= 50.65) ? -3.0*Math.sin((scale_constant*(this.t)*2) + Math.PI/2) + 3.0 : 3.0;
 
             this.shapes["UFOBeam"].draw(
                 graphics_state,
@@ -581,33 +590,53 @@ class Assignment_Two_Skeleton extends Scene_Component {
         }
         else if ( t > 38.65 && t <= 42.15) {
             this.draw_beam = true;
-            x_motion = 200 - 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+
+            x_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+            y_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+            z_scale = (Math.sin((2*(t-3.65)*scale_constant) + Math.PI/2) + 1)/2;
+
+            x_motion = 200 - 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
             y_motion = 33;
-            z_motion = -200 + 400*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
+            z_motion = -200 + 200*((Math.sin(((t - 3.65)*scale_constant) + Math.PI/2)+1)/2);
             ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(x_motion,y_motion,z_motion)));
+            ufo_matrix = ufo_matrix.times(Mat4.scale(Vec.of(x_scale,y_scale,z_scale)));
+
         }
 
         else if (t > 42.15 && t <= 47.15) {
-            //Do Nothing
-            this.camera_scene = 3;
-            this.draw_beam = false;
-        }
+            //Do something
+            
+            scale_constant = -1*Math.PI/5;
+            y_motion = 33 + 20*((Math.sin(((t - 42.15)*scale_constant)+ Math.PI/2)+1)/2);
 
-        else if (t > 47.15 && t <= 50.65) {
-            y_motion = 33 - 3*((Math.sin(((t - 8.65)*scale_constant)+ Math.PI/2)+1)/2);
+            this.camera_scene = 3;
             this.draw_beam = true;
-            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(325, y_motion, -220)));
+        }
+        else if (t > 47.15 && t <= 50.65) {
+            y_motion = 30 + 3*((Math.sin((2*(t - 47.15)*scale_constant)+ Math.PI/2)+1)/2);
+            this.draw_beam = true;
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(325, y_motion, -220)));
             if(t > 49.15) this.draw_beam = false;
         }
         else if (t > 50.65 && t <= 67.65) {
             this.draw_beam = false;
             this.camera_scene = 4;
-            y_motion = 70 + -40*((Math.sin(((t - 5.15)*scale_constant)+ Math.PI)));
-            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(375, y_motion, -220)));
-            if (t > 54.15) this.draw_beam = false;
+            y_motion = 70 + -40*((Math.sin((2*(t - 50.65)*scale_constant)+ Math.PI/2)+1)/2);
+
+            x_scale = (Math.sin((2*(t-50.65)*scale_constant) + Math.PI/2) + 1)/2;
+            y_scale = (Math.sin((2*(t-50.65)*scale_constant) + Math.PI/2) + 1)/2;
+            z_scale = (Math.sin((2*(t-50.65)*scale_constant) + Math.PI/2) + 1)/2;
+
+            ufo_matrix = ufo_matrix.times(Mat4.translation(Vec.of(325, y_motion, -220)));
+            ufo_matrix = ufo_matrix.times(Mat4.scale(Vec.of(x_scale, y_scale, z_scale)));
+            if (t > 54.15) {
+                this.draw_beam = false;
+                ufo_matrix = ufo_matrix.times(Mat4.scale(Vec.of(0,0,0)));
+            }
         }
         else {
-            //this.t = 0; //reset to 0 to start over animation
+            //this.t = 41; //reset to 0 to start over animation
             this.draw_beam = false;
         }
         return ufo_matrix;
@@ -753,6 +782,8 @@ class Assignment_Two_Skeleton extends Scene_Component {
         if (!this.paused)
             this.t += graphics_state.animation_delta_time / 1000;
         const t = this.t;
+
+        console.log(this.t);
 
         this.set_camera(graphics_state, t);
         this.renderShadowmap(graphics_state, t);
