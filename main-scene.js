@@ -211,6 +211,44 @@ class Assignment_Two_Skeleton extends Scene_Component {
             this.draw_cow(graphics_state, m, .5, true, false);
         });
         
+        //other cows
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(220, 5, -220)));
+            m = m.times(Mat4.rotation(-Math.PI/7, Vec.of(0, 1, 0)));
+            this.draw_cow(graphics_state, m, .5, true, false);
+        });
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(175, 5, -215)));
+            m = m.times(Mat4.rotation(Math.PI/4, Vec.of(0, 1, 0)));
+            this.draw_cow(graphics_state, m, .5, true, false);
+        });
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(185, 5, -250)));
+            m = m.times(Mat4.rotation(Math.PI/8, Vec.of(0, 1, 0)));
+            this.draw_cow(graphics_state, m, .5, true, false);
+        });
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(215, 5, -280)));
+            m = m.times(Mat4.rotation(2*Math.PI/2, Vec.of(0, 1, 0)));
+            this.draw_cow(graphics_state, m, .5, true, false);
+        });
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(240, 5, -235)));
+            m = m.times(Mat4.rotation(2*Math.PI/2, Vec.of(0, 1, 0)));
+            this.draw_cow(graphics_state, m, .5, true, false);
+        });
+        this.lights[0].renderDepthBuffer(graphics_state, () => {
+            let m = Mat4.identity();
+            m = m.times(Mat4.translation(Vec.of(260, 5, -245)));
+            m = m.times(Mat4.rotation(3*Math.PI/2, Vec.of(0, 1, 0)));
+            this.draw_cow(graphics_state, m, .5, true, false);
+        });
+
         this.lights[0].renderDepthBuffer(graphics_state, () => {
             let m = Mat4.identity();
             m = this.get_ufo_matrix(t);
@@ -646,12 +684,36 @@ class Assignment_Two_Skeleton extends Scene_Component {
         m = m.times(Mat4.translation(Vec.of(375, 5, -205)));
         this.draw_cow(graphics_state, m, .5, false, false);
 
-        //TODO insert more cows
-
+        //a couple more cows for scenery
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(220, 5, -220)));
+        m = m.times(Mat4.rotation(-Math.PI/7, Vec.of(0, 1, 0)));
+        this.draw_cow(graphics_state, m, .5, false, false);
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(175, 5, -215)));
+        m = m.times(Mat4.rotation(Math.PI/4, Vec.of(0, 1, 0)));
+        this.draw_cow(graphics_state, m, .5, false, false);
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(185, 5, -250)));
+        m = m.times(Mat4.rotation(Math.PI/8, Vec.of(0, 1, 0)));
+        this.draw_cow(graphics_state, m, .5, false, false);
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(215, 5, -280)));
+        m = m.times(Mat4.rotation(2*Math.PI/2, Vec.of(0, 1, 0)));
+        this.draw_cow(graphics_state, m, .5, false, false);
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(240, 5, -235)));
+        m = m.times(Mat4.rotation(2*Math.PI/2, Vec.of(0, 1, 0)));
+        this.draw_cow(graphics_state, m, .5, false, false);
+        m = Mat4.identity();
+        m = m.times(Mat4.translation(Vec.of(260, 5, -245)));
+        m = m.times(Mat4.rotation(3*Math.PI/2, Vec.of(0, 1, 0)));
+        this.draw_cow(graphics_state, m, .5, false, false);
         // ufo
         m = this.get_ufo_matrix(t);
         this.draw_ufo(graphics_state, m, false);
 
+        //barn
         m = Mat4.identity();
         this.draw_barn(graphics_state, m, false);
 
