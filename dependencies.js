@@ -1425,7 +1425,7 @@ window.Heart_Shader = window.classes.Heart_Shader = class Heart_Shader extends S
 				
 				// implements cylindrical billboarding
 				position = mat4(1.0, 0.0, 0.0, 0.0,
-								camera_model_transform[1][0], camera_model_transform[1][1], camera_model_transform[1][2], 0.0,
+								0.0, 1.0, 0.0, 0.0,
 								0.0, 0.0, 1.0, 0.0,
 								camera_model_transform[3][0], camera_model_transform[3][1], camera_model_transform[3][2], 1.0) * position;
 
