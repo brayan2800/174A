@@ -199,7 +199,7 @@ class Assignment_Two_Skeleton extends Scene_Component {
         this.camera_scene = 0;
 
         //x, y, z , y_angle
-        this.cow_list = [[325, 5, -205, 0, 0.5], //cow to be selected
+        this.cow_list = [[325, 5, -205, 0, 0.5], //main cow's new partner
 //                          [250, 5, -250, 0],    
 //                          [280, 5, -270, Math.PI/4],
 //                          [300, 5, -300, Math.PI/3],
@@ -642,8 +642,6 @@ class Assignment_Two_Skeleton extends Scene_Component {
         }
         else if (t > 50.65 && t <= 67.65) {
             this.draw_beam = false;
-            this.camera_scene = 4;
-
             y_motion = 70 + -40*((Math.sin((2*(t - 50.65)*scale_constant)+ Math.PI/2)+1)/2);
 
             x_scale = (Math.sin((2*(t-50.65)*scale_constant) + Math.PI/2) + 1)/2;
@@ -678,15 +676,17 @@ class Assignment_Two_Skeleton extends Scene_Component {
             z_motion = -210 - 100 * Math.cos(this.t/4.5);
             
             x_ref = 200;
-            y_ref = 70 - 65/14*this.t;
+            y_ref = 70   - 65/14 * this.t;
             z_ref = -250 + 50/14 * this.t;
 
             this.cam_eye = Vec.of(x_motion, y_motion, z_motion);
             this.ref = Vec.of(x_ref, y_ref, z_ref);
         }
         
+        //14-28.15s observe UFO picking up cow
         else if (this.camera_scene == 1) { /*Stay Still*/}
 
+        //28.15-42.15s 
         //follow cow once it is picked up
         //also start moving toward drop off spot
         else if (this.camera_scene == 2) {
@@ -694,45 +694,44 @@ class Assignment_Two_Skeleton extends Scene_Component {
             var cow_coords = Vec.of(cow_matrix[0][3], cow_matrix[1][3], cow_matrix[2][3]);
           
             x_motion = 108.5 + 100/14 * (this.t - 28.15);
-            z_motion = -110 - 30/14 * (this.t - 28.15);
-            y_motion = 70 - 2.5 * (this.t - 28.15);
+            z_motion = -110  - 30/14  * (this.t - 28.15);
+            y_motion = 70    - 35/14  * (this.t - 28.15);
 
             this.cam_eye[0] = x_motion;
             this.cam_eye[2] = z_motion;
 
             if (!(cow_coords[0] == 0 && cow_coords[1] == 0 && cow_coords[2] == 0))
                 this.ref = cow_coords;
+
+            console.log("eye" + this.cam_eye);
+            console.log("ref" + this.ref);
         }
 
+        //42.25s until x = 375
+        //move toward drop off zone, observe cows fall in love
+        //shift behind them to end with scenery shot
         else if (this.camera_scene == 3) {
-            x_motion = 208.5 + 8 * (this.t - 42.15);
-            y_motion = 70 - 2.5 * (this.t - 42.15);
-            z_motion = -140 - 7.5 * (this.t - 42.15);
-            x_ref = 325;
-            y_ref = 5;
-            z_ref = -212.5;
-
-            this.cam_eye[0] = x_motion;
-            this.cam_eye[1] = y_motion;
-            this.cam_eye[2] = z_motion;
-            this.ref[0] = x_ref;
-            this.ref[1] = y_ref;
-            this.ref[2] = z_ref;
-        }
-        
-        else if (this.camera_scene == 4) {
-            if (this.cam_eye[0] < 399)
-            {
-                x_motion = 276.4 + 6.15 * (this.t - 50.65);
-                y_motion = 48.75 - 1.75 * (this.t - 50.65);
-                y_ref = 5 + 0.4 * (this.t - 50.65)
+            if (this.cam_eye[0] < 375)
+             {
+                x_motion = 208.5 + 6.79 * (this.t - 42.15);
+                y_motion = 70    - 2.01 * (this.t - 42.15);
+                z_motion = -140  - 2.57 * (this.t - 42.15);
+                x_ref = 325;
+                y_ref = 5;
+                z_ref = -212.5;
+                //shift reference pt up slightly to get better final view
+                if (this.t >= 50.65) y_ref = 5 + 0.4 * (this.t - 50.65);
 
                 this.cam_eye[0] = x_motion;
                 this.cam_eye[1] = y_motion;
+                this.cam_eye[2] = z_motion;
+                this.ref[0] = x_ref;
                 this.ref[1] = y_ref;
-            }
-        }
+                this.ref[2] = z_ref;
+                }
+             }
         
+        //apply changes to camera 
         graphics_state.camera_transform = Mat4.look_at(this.cam_eye, this.ref, up);
     }
 
