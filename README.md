@@ -6,3 +6,5 @@ Steven Lara
 Kyle Romero
 Jair Hinojosa
 Brayan Ferrel
+
+No special instructions are needed to run this project. Simply follow instructions for other projects.
