@@ -7,4 +7,4 @@ Kyle Romero
 Jair Hinojosa
 Brayan Ferrel
 
-No special instructions are needed to run this project. Simply follow instructions for other projects.
+In order to fully experience the animation's audio, you must manually play the audio clip that we created to go along with the animation.
